@@ -1,0 +1,8 @@
+{
+  "name": "Remix Finanças \u0026 Freela PRO",
+  "description": "Controle financeiro completo para CLT e Freelancer, gestão de bancos e dinheiro físico, amortização do financiamento da casa, cadastro de clientes e mapa de trabalhos no Brasil.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
