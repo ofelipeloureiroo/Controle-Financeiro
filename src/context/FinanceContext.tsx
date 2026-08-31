@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import {
+  INITIAL_ARCHITECT_PROFILE,
+  INITIAL_ARCHITECTURE_PROJECTS,
   INITIAL_BANK_ACCOUNTS,
   INITIAL_CATEGORY_BUDGETS,
   INITIAL_CLIENTS,
@@ -10,6 +12,8 @@ import {
   INITIAL_TRANSACTIONS,
 } from '../data/initialData';
 import {
+  ArchitectProfile,
+  ArchitectureProject,
   BankAccount,
   CategoryBudget,
   Client,
@@ -22,16 +26,27 @@ import {
 } from '../types';
 
 interface FinanceContextType {
+  architectProfile: ArchitectProfile;
+  updateArchitectProfile: (profile: Partial<ArchitectProfile>) => void;
+  updateProfilePhoto: (photoUrl: string) => void;
   transactions: Transaction[];
   bankAccounts: BankAccount[];
   houseMortgage: HouseMortgage;
   debts: Debt[];
   clients: Client[];
   freelanceProjects: FreelanceProject[];
+  architectureProjects: ArchitectureProject[];
   savingsGoals: SavingsGoal[];
   categoryBudgets: CategoryBudget[];
   selectedMonth: string; // YYYY-MM
   setSelectedMonth: (month: string) => void;
+
+  // Actions - Architecture Projects & Photos
+  addArchitectureProject: (project: Omit<ArchitectureProject, 'id' | 'createdAt'>) => void;
+  updateArchitectureProject: (id: string, project: Partial<ArchitectureProject>) => void;
+  deleteArchitectureProject: (id: string) => void;
+  addPhotoToProject: (projectId: string, photoUrl: string) => void;
+  removePhotoFromProject: (projectId: string, photoIndex: number) => void;
 
   // Actions - Transactions
   addTransaction: (tx: Omit<Transaction, 'id'>) => void;
@@ -107,11 +122,18 @@ const STORAGE_KEYS = {
   DEBTS: 'financas_freela_debts_v1',
   CLIENTS: 'financas_freela_clients_v1',
   PROJECTS: 'financas_freela_projects_v1',
+  ARCHITECTURE_PROJECTS: 'laine_paula_arch_projects_v1',
   GOALS: 'financas_freela_goals_v1',
   BUDGETS: 'financas_freela_budgets_v1',
+  PROFILE: 'laine_paula_profile_v1',
 };
 
 export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [architectProfile, setArchitectProfile] = useState<ArchitectProfile>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.PROFILE);
+    return saved ? { ...INITIAL_ARCHITECT_PROFILE, ...JSON.parse(saved) } : INITIAL_ARCHITECT_PROFILE;
+  });
+
   const [selectedMonth, setSelectedMonth] = useState<string>(() => {
     const now = new Date();
     const y = now.getFullYear();
@@ -147,6 +169,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [freelanceProjects, setFreelanceProjects] = useState<FreelanceProject[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.PROJECTS);
     return saved ? JSON.parse(saved) : INITIAL_FREELANCE_PROJECTS;
+  });
+
+  const [architectureProjects, setArchitectureProjects] = useState<ArchitectureProject[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.ARCHITECTURE_PROJECTS);
+    return saved ? JSON.parse(saved) : INITIAL_ARCHITECTURE_PROJECTS;
   });
 
   const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>(() => {
@@ -185,12 +212,39 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, [freelanceProjects]);
 
   useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.ARCHITECTURE_PROJECTS, JSON.stringify(architectureProjects));
+  }, [architectureProjects]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(freelanceProjects));
+  }, [freelanceProjects]);
+
+  useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.GOALS, JSON.stringify(savingsGoals));
   }, [savingsGoals]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.BUDGETS, JSON.stringify(categoryBudgets));
   }, [categoryBudgets]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(architectProfile));
+  }, [architectProfile]);
+
+  // Actions - Profile
+  const updateArchitectProfile = (updatedFields: Partial<ArchitectProfile>) => {
+    setArchitectProfile((prev) => ({
+      ...prev,
+      ...updatedFields,
+    }));
+  };
+
+  const updateProfilePhoto = (photoUrl: string) => {
+    setArchitectProfile((prev) => ({
+      ...prev,
+      photoUrl,
+    }));
+  };
 
   // Actions
   const addTransaction = (txData: Omit<Transaction, 'id'>) => {
@@ -581,6 +635,58 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setFreelanceProjects((prev) => prev.filter((p) => p.id !== id));
   };
 
+  // Architecture Projects & Portfolio Actions
+  const addArchitectureProject = (projectData: Omit<ArchitectureProject, 'id' | 'createdAt'>) => {
+    const newProj: ArchitectureProject = {
+      ...projectData,
+      id: `proj-arch-${Date.now()}`,
+      createdAt: new Date().toISOString().split('T')[0],
+    };
+    setArchitectureProjects((prev) => [newProj, ...prev]);
+  };
+
+  const updateArchitectureProject = (id: string, updatedFields: Partial<ArchitectureProject>) => {
+    setArchitectureProjects((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, ...updatedFields } : p))
+    );
+  };
+
+  const deleteArchitectureProject = (id: string) => {
+    setArchitectureProjects((prev) => prev.filter((p) => p.id !== id));
+  };
+
+  const addPhotoToProject = (projectId: string, photoUrl: string) => {
+    if (!photoUrl.trim()) return;
+    setArchitectureProjects((prev) =>
+      prev.map((p) => {
+        if (p.id === projectId) {
+          const currentImages = p.images || [];
+          return {
+            ...p,
+            images: [...currentImages, photoUrl.trim()],
+          };
+        }
+        return p;
+      })
+    );
+  };
+
+  const removePhotoFromProject = (projectId: string, photoIndex: number) => {
+    setArchitectureProjects((prev) =>
+      prev.map((p) => {
+        if (p.id === projectId) {
+          const currentImages = [...(p.images || [])];
+          currentImages.splice(photoIndex, 1);
+          return {
+            ...p,
+            images: currentImages,
+          };
+        }
+        return p;
+      })
+    );
+  };
+
   const receiveProjectPayment = (projectId: string, amount: number, bankAccountId: string) => {
     const project = freelanceProjects.find((p) => p.id === projectId);
     if (!project || amount <= 0) return;
@@ -830,8 +936,10 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (data.debts) setDebts(data.debts);
       if (data.clients) setClients(data.clients);
       if (data.freelanceProjects) setFreelanceProjects(data.freelanceProjects);
+      if (data.architectureProjects) setArchitectureProjects(data.architectureProjects);
       if (data.savingsGoals) setSavingsGoals(data.savingsGoals);
       if (data.categoryBudgets) setCategoryBudgets(data.categoryBudgets);
+      if (data.architectProfile) setArchitectProfile(data.architectProfile);
       return true;
     } catch {
       return false;
@@ -845,23 +953,34 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setDebts(INITIAL_DEBTS);
     setClients(INITIAL_CLIENTS);
     setFreelanceProjects(INITIAL_FREELANCE_PROJECTS);
+    setArchitectureProjects(INITIAL_ARCHITECTURE_PROJECTS);
     setSavingsGoals(INITIAL_SAVINGS_GOALS);
     setCategoryBudgets(INITIAL_CATEGORY_BUDGETS);
+    setArchitectProfile(INITIAL_ARCHITECT_PROFILE);
   };
 
   return (
     <FinanceContext.Provider
       value={{
+        architectProfile,
+        updateArchitectProfile,
+        updateProfilePhoto,
         transactions,
         bankAccounts,
         houseMortgage,
         debts,
         clients,
         freelanceProjects,
+        architectureProjects,
         savingsGoals,
         categoryBudgets,
         selectedMonth,
         setSelectedMonth,
+        addArchitectureProject,
+        updateArchitectureProject,
+        deleteArchitectureProject,
+        addPhotoToProject,
+        removePhotoFromProject,
         addTransaction,
         updateTransaction,
         deleteTransaction,

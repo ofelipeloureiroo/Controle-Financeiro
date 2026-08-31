@@ -1,6 +1,6 @@
 {
-  "name": "Remix Finanças \u0026 Freela PRO",
-  "description": "Controle financeiro completo para CLT e Freelancer, gestão de bancos e dinheiro físico, amortização do financiamento da casa, cadastro de clientes e mapa de trabalhos no Brasil.",
+  "name": "Laíne Paula Arquiteta",
+  "description": "Portfólio de projetos de arquitetura e interiores, galeria de fotos, gestão de clientes, finanças e acompanhamento de obras para Laíne Paula.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

@@ -157,6 +157,27 @@ export interface CategoryBudget {
   iconName: string;
 }
 
+export interface ArchitectureProject {
+  id: string;
+  title: string;
+  clientName: string;
+  category: 'residencial' | 'interiores' | 'cozinha_gourmet' | 'suite_master' | 'living' | 'comercial' | 'consultoria';
+  location: string; // e.g. "Rio Bonito, RJ"
+  state: string; // UF
+  areaM2?: number; // e.g. 140
+  honorarios?: number; // e.g. 12500
+  status: 'estudo_preliminar' | 'anteprojeto' | 'executivo' | 'obra' | 'entregue';
+  coverImage: string;
+  images: string[];
+  beforeImage?: string;
+  afterImage?: string;
+  description?: string;
+  deliveryDate?: string;
+  featured?: boolean;
+  tags?: string[];
+  createdAt?: string;
+}
+
 export interface BrazilStateInfo {
   uf: string;
   name: string;
@@ -166,3 +187,18 @@ export interface BrazilStateInfo {
   labelX: number;
   labelY: number;
 }
+
+export interface ArchitectProfile {
+  name: string;
+  title: string;
+  photoUrl: string;
+  location: string;
+  specialty: string;
+  tagline: string;
+  description: string;
+  instagramHandle: string;
+  instagramUrl: string;
+  followersCount: string;
+  rating: number;
+}
+
