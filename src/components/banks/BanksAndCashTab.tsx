@@ -227,8 +227,19 @@ export const BanksAndCashTab: React.FC<BanksAndCashTabProps> = ({
 
         {/* Cash Balance Display & Quick Info */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
-          <div className="md:col-span-4 p-4 rounded-xl bg-[#09090b] border border-[#27272a]">
-            <span className="text-[11px] text-[#a1a1aa] block">Saldo Atual em Dinheiro Físico</span>
+          <div className="md:col-span-4 p-4 rounded-xl bg-[#09090b] border border-[#27272a] relative group">
+            <div className="flex items-start justify-between">
+              <span className="text-[11px] text-[#a1a1aa] block">Saldo Atual em Dinheiro Físico</span>
+              {physicalCashAcc && (
+                <button
+                  onClick={() => handleOpenEdit(physicalCashAcc)}
+                  className="opacity-0 group-hover:opacity-100 p-1 rounded-lg bg-[#27272a] hover:bg-[#3f3f46] text-[#a1a1aa] hover:text-[#fafafa] transition-all cursor-pointer"
+                  title="Editar Saldo Total"
+                >
+                  <Edit2 className="w-3 h-3" />
+                </button>
+              )}
+            </div>
             <div className="text-3xl font-bold text-yellow-500 mt-1">
               {formatCurrency(totalPhysicalCash)}
             </div>

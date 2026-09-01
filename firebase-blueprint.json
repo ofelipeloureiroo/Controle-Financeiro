@@ -1,0 +1,16 @@
+{
+  "collections": [
+    {
+      "name": "users",
+      "description": "Store user roles and statuses for access control.",
+      "documentId": "uid",
+      "fields": [
+        { "name": "uid", "type": "string", "description": "Firebase Auth UID" },
+        { "name": "email", "type": "string" },
+        { "name": "role", "type": "string", "description": "'admin' or 'user'" },
+        { "name": "status", "type": "string", "description": "'active', 'pending', or 'inactive'" },
+        { "name": "createdAt", "type": "timestamp" }
+      ]
+    }
+  ]
+}

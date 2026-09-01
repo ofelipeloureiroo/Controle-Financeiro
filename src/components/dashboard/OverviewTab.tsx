@@ -39,7 +39,7 @@ import {
 } from 'recharts';
 import { useFinance } from '../../context/FinanceContext';
 import { formatCurrency, formatMonthYear, formatPercent } from '../../utils/formatters';
-import { BrazilInteractiveMap } from '../map/BrazilInteractiveMap';
+import { GoogleProjectsMap } from '../map/GoogleProjectsMap';
 
 interface OverviewTabProps {
   onNavigateTab: (tab: string) => void;
@@ -249,8 +249,8 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
             </span>
           </div>
 
-          <div className="flex-1 min-h-[300px]">
-            <BrazilInteractiveMap isWidgetMode={true} onSelectState={() => onNavigateTab('map')} />
+          <div className="flex-1 min-h-[300px] h-[350px]">
+            <GoogleProjectsMap activeView="brazil" />
           </div>
         </div>
 

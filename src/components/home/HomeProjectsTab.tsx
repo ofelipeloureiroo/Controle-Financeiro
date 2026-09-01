@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import {
+  Bell,
   Briefcase,
   Building,
   Camera,
   CheckCircle2,
   ChevronRight,
+  Clock,
   Compass,
   Edit3,
   ExternalLink,
@@ -21,6 +23,7 @@ import {
   MessageCircle,
   Plus,
   Search,
+  Send,
   Sparkles,
   Star,
   TrendingUp,
@@ -31,6 +34,7 @@ import {
 import { useFinance } from '../../context/FinanceContext';
 import { ArchitectureProject } from '../../types';
 import { formatCurrency } from '../../utils/formatters';
+import { NICHES } from '../../utils/theme';
 import { AddProjectModal } from '../modals/AddProjectModal';
 import { EditProfileModal } from '../modals/EditProfileModal';
 import { ProjectDetailModal } from '../modals/ProjectDetailModal';
@@ -51,7 +55,16 @@ export const HomeProjectsTab: React.FC<HomeProjectsTabProps> = ({
     monthlyIncomeFreelance,
     totalNetWorth,
     addPhotoToProject,
+    dueSoonInstallments,
+    overdueInstallments,
+    dueSoonMilestones,
+    overdueMilestones,
+    ongoingArchitectureProjects,
+    loadDemoData,
   } = useFinance();
+
+  const currentNiche = NICHES[architectProfile.niche || 'arquitetura'] || NICHES.arquitetura;
+  const categories = currentNiche.categories;
 
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -112,50 +125,49 @@ export const HomeProjectsTab: React.FC<HomeProjectsTabProps> = ({
   ).length;
   const deliveredProjectsCount = architectureProjects.filter((p) => p.status === 'entregue').length;
 
-  const categories = [
-    { id: 'all', label: 'Todos os Projetos' },
-    { id: 'residencial', label: 'Residenciais' },
-    { id: 'interiores', label: 'Interiores' },
-    { id: 'cozinha_gourmet', label: 'Cozinhas & Gourmet' },
-    { id: 'suite_master', label: 'Suítes Master' },
-    { id: 'comercial', label: 'Comercial / Clínicas' },
-    { id: 'antes_depois', label: '✨ Antes & Depois' },
-  ];
-
   const getStatusBadge = (status: ArchitectureProject['status']) => {
     switch (status) {
       case 'estudo_preliminar':
-        return { label: 'Estudo Preliminar', bg: 'bg-[#de9b9d]/20 text-[#e29a9b] border-[#de9b9d]/30' };
+        return { label: 'Estudo Preliminar', style: { backgroundColor: 'rgba(var(--theme-accent-rgb), 0.2)', color: 'var(--theme-accent)', borderColor: 'rgba(var(--theme-accent-rgb), 0.35)' } };
       case 'anteprojeto':
-        return { label: 'Anteprojeto 3D', bg: 'bg-[#c58a4b]/20 text-[#d49454] border-[#c58a4b]/30' };
+        return { label: 'Anteprojeto 3D', style: { backgroundColor: 'var(--theme-badge-bg)', color: 'var(--theme-badge-text)', borderColor: 'var(--theme-badge-border)' } };
       case 'executivo':
-        return { label: 'Projeto Executivo', bg: 'bg-amber-500/20 text-amber-300 border-amber-500/30' };
+        return { label: 'Projeto Executivo', style: { backgroundColor: 'rgba(245, 158, 11, 0.2)', color: '#fcd34d', borderColor: 'rgba(245, 158, 11, 0.35)' } };
       case 'obra':
-        return { label: 'Em Obra', bg: 'bg-[#d97706]/20 text-[#f59e0b] border-[#d97706]/30' };
+        return { label: 'Em Obra', style: { backgroundColor: 'rgba(217, 119, 6, 0.2)', color: '#f59e0b', borderColor: 'rgba(217, 119, 6, 0.35)' } };
       case 'entregue':
-        return { label: 'Entregue', bg: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' };
+        return { label: 'Entregue', style: { backgroundColor: 'rgba(16, 185, 129, 0.2)', color: '#34d399', borderColor: 'rgba(16, 185, 129, 0.35)' } };
       default:
-        return { label: status, bg: 'bg-zinc-800 text-zinc-300 border-zinc-700' };
+        return { label: status, style: { backgroundColor: '#27272a', color: '#d4d4d8', borderColor: '#3f3f46' } };
     }
   };
 
   return (
     <div className="space-y-8 pb-16">
-      {/* 1. Hero / Architect Bio Presentation Card (Instagram Theme) */}
+      {/* 1. Hero / Bio Presentation Card */}
       <section className="relative overflow-hidden rounded-3xl bg-gradient-to-b from-[#241e1b] via-[#1c1815] to-[#14110f] border border-[#3d342f] p-6 sm:p-8 shadow-2xl">
         {/* Subtle Decorative Background Accents */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-[#c58a4b]/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-1/3 w-80 h-80 bg-[#d48b8e]/10 rounded-full blur-3xl pointer-events-none" />
+        <div
+          className="absolute top-0 right-0 w-96 h-96 rounded-full blur-3xl pointer-events-none opacity-20"
+          style={{ backgroundColor: 'var(--theme-primary)' }}
+        />
+        <div
+          className="absolute bottom-0 left-1/3 w-80 h-80 rounded-full blur-3xl pointer-events-none opacity-20"
+          style={{ backgroundColor: 'var(--theme-accent)' }}
+        />
 
         <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8">
-          {/* Architect Bio & Photo */}
+          {/* Bio & Photo */}
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-left">
             {/* Avatar / Photo Frame with Click-to-Edit & Hover Badge */}
             <div className="relative group">
               <button
                 type="button"
                 onClick={() => setIsEditProfileModalOpen(true)}
-                className="relative block w-28 h-28 sm:w-32 sm:h-32 rounded-full p-1 bg-gradient-to-tr from-[#d48b8e] via-[#c58a4b] to-[#e29a9b] shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#c58a4b]"
+                className="relative block w-28 h-28 sm:w-32 sm:h-32 rounded-full p-1 shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer focus:outline-none"
+                style={{
+                  background: 'linear-gradient(135deg, var(--theme-gradient-from), var(--theme-gradient-to))',
+                }}
                 title="Clique para trocar a foto de perfil"
               >
                 <div className="w-full h-full rounded-full overflow-hidden bg-[#1a1614] border-2 border-[#12100e] relative">
@@ -169,7 +181,7 @@ export const HomeProjectsTab: React.FC<HomeProjectsTabProps> = ({
                   />
                   {/* Hover Overlay with Camera */}
                   <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white transition-opacity duration-200">
-                    <Camera className="w-6 h-6 text-[#c58a4b] mb-1 drop-shadow" />
+                    <Camera className="w-6 h-6 mb-1 drop-shadow" style={{ color: 'var(--theme-primary)' }} />
                     <span className="text-[11px] font-bold text-[#fcf8f5] tracking-wide uppercase">
                       Trocar Foto
                     </span>
@@ -181,7 +193,10 @@ export const HomeProjectsTab: React.FC<HomeProjectsTabProps> = ({
               <button
                 type="button"
                 onClick={() => setIsEditProfileModalOpen(true)}
-                className="absolute -bottom-1 -right-1 p-2 rounded-full bg-gradient-to-br from-[#c58a4b] to-[#a36829] text-[#12100e] border-2 border-[#12100e] shadow-lg hover:scale-110 active:scale-90 transition-transform cursor-pointer"
+                className="absolute -bottom-1 -right-1 p-2 rounded-full text-[#12100e] border-2 border-[#12100e] shadow-lg hover:scale-110 active:scale-90 transition-transform cursor-pointer"
+                style={{
+                  backgroundColor: 'var(--theme-primary)',
+                }}
                 title="Alterar foto de perfil"
               >
                 <Camera className="w-3.5 h-3.5 stroke-[2.5]" />
@@ -194,14 +209,22 @@ export const HomeProjectsTab: React.FC<HomeProjectsTabProps> = ({
                 <h1 className="text-2xl sm:text-3xl font-bold text-[#fcf8f5] font-serif tracking-tight">
                   {architectProfile.name}
                 </h1>
-                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-[#c58a4b]/20 text-[#d49454] border border-[#c58a4b]/30">
+                <span
+                  className="px-3 py-1 rounded-full text-xs font-semibold"
+                  style={{
+                    backgroundColor: 'var(--theme-badge-bg)',
+                    color: 'var(--theme-badge-text)',
+                    border: '1px solid var(--theme-badge-border)',
+                  }}
+                >
                   {architectProfile.title}
                 </span>
                 {/* Quick Edit Profile Button */}
                 <button
                   type="button"
                   onClick={() => setIsEditProfileModalOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#28221e] hover:bg-[#342c27] text-[#c58a4b] hover:text-[#d49454] text-xs font-medium border border-[#3d342f] transition-all cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#28221e] hover:bg-[#342c27] text-xs font-medium border border-[#3d342f] transition-all cursor-pointer"
+                  style={{ color: 'var(--theme-primary)' }}
                   title="Alterar foto e informações do perfil"
                 >
                   <Edit3 className="w-3 h-3" />
@@ -210,7 +233,7 @@ export const HomeProjectsTab: React.FC<HomeProjectsTabProps> = ({
               </div>
 
               <p className="text-sm font-medium text-[#e8ded7] flex items-center justify-center sm:justify-start gap-1.5">
-                <MapPin className="w-4 h-4 text-[#d48b8e]" /> {architectProfile.location}
+                <MapPin className="w-4 h-4" style={{ color: 'var(--theme-accent)' }} /> {architectProfile.location}
               </p>
 
               <p className="text-xs text-[#a89c93] max-w-xl leading-relaxed">
@@ -227,7 +250,7 @@ export const HomeProjectsTab: React.FC<HomeProjectsTabProps> = ({
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#28221e] hover:bg-[#342c27] text-xs font-medium text-[#fcf8f5] border border-[#3d342f] transition-colors"
                 >
-                  <Instagram className="w-3.5 h-3.5 text-[#d48b8e]" />
+                  <Instagram className="w-3.5 h-3.5" style={{ color: 'var(--theme-accent)' }} />
                   {architectProfile.instagramHandle}
                   <ExternalLink className="w-3 h-3 text-[#a89c93]" />
                 </a>
@@ -246,26 +269,49 @@ export const HomeProjectsTab: React.FC<HomeProjectsTabProps> = ({
                 setEditingProject(null);
                 setIsAddModalOpen(true);
               }}
-              className="flex-1 sm:flex-initial px-5 py-3 rounded-xl bg-[#c58a4b] hover:bg-[#d49454] text-black font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-[#c58a4b]/20 transition-all active:scale-95 cursor-pointer"
+              className="flex-1 sm:flex-initial px-5 py-3 rounded-xl text-black font-bold text-xs flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95 cursor-pointer hover:brightness-110"
+              style={{
+                backgroundColor: 'var(--theme-primary)',
+              }}
             >
               <FolderPlus className="w-4 h-4 stroke-[2.5]" />
               <span>+ Novo Projeto / Fotos</span>
             </button>
 
             <button
+              onClick={() => onNavigateTab('deadlines')}
+              className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-[#28221e] hover:bg-[#342c27] text-[#e8ded7] font-semibold text-xs flex items-center justify-center gap-2 border border-[#3d342f] hover:border-[var(--theme-primary)]/50 transition-all cursor-pointer"
+            >
+              <Clock className="w-4 h-4" style={{ color: 'var(--theme-accent)' }} />
+              <span>Prazos & Cobranças</span>
+              {(dueSoonInstallments.length > 0 || overdueInstallments.length > 0) && (
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-amber-500/20 text-amber-300 font-bold">
+                  {dueSoonInstallments.length + overdueInstallments.length}
+                </span>
+              )}
+            </button>
+
+            <button
               onClick={() => onNavigateTab('overview')}
               className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-[#28221e] hover:bg-[#342c27] text-[#e8ded7] font-semibold text-xs flex items-center justify-center gap-2 border border-[#3d342f] transition-colors cursor-pointer"
             >
-              <TrendingUp className="w-4 h-4 text-[#c58a4b]" />
+              <TrendingUp className="w-4 h-4" style={{ color: 'var(--theme-primary)' }} />
               <span>Painel Financeiro Geral</span>
             </button>
           </div>
         </div>
 
-        {/* Instagram 3 Story Highlight Badges */}
+        {/* Highlight Badges */}
         <div className="mt-6 pt-6 border-t border-[#3d342f]/80 grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="p-3.5 rounded-2xl bg-[#14110f]/80 border border-[#3d342f] flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#d48b8e]/20 border border-[#d48b8e]/40 flex items-center justify-center text-[#d48b8e] font-serif font-bold text-sm">
+            <div
+              className="w-10 h-10 rounded-full flex items-center justify-center font-serif font-bold text-sm"
+              style={{
+                backgroundColor: 'rgba(var(--theme-accent-rgb), 0.2)',
+                color: 'var(--theme-accent)',
+                border: '1px solid rgba(var(--theme-accent-rgb), 0.4)',
+              }}
+            >
               R$
             </div>
             <div>
@@ -275,7 +321,14 @@ export const HomeProjectsTab: React.FC<HomeProjectsTabProps> = ({
           </div>
 
           <div className="p-3.5 rounded-2xl bg-[#14110f]/80 border border-[#3d342f] flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#c58a4b]/20 border border-[#c58a4b]/40 flex items-center justify-center text-[#d49454] font-bold text-sm">
+            <div
+              className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm"
+              style={{
+                backgroundColor: 'var(--theme-badge-bg)',
+                color: 'var(--theme-badge-text)',
+                border: '1px solid var(--theme-badge-border)',
+              }}
+            >
               ★
             </div>
             <div>
@@ -296,17 +349,59 @@ export const HomeProjectsTab: React.FC<HomeProjectsTabProps> = ({
         </div>
       </section>
 
+      {/* Quick Alerts Callout Bar */}
+      {(dueSoonInstallments.length > 0 || overdueInstallments.length > 0 || dueSoonMilestones.length > 0) && (
+        <section
+          onClick={() => onNavigateTab('deadlines')}
+          className="p-4 rounded-2xl bg-gradient-to-r from-[#241e1b] via-[#2a201c] to-[#1c1815] border border-amber-500/40 hover:border-[var(--theme-primary)] transition-all cursor-pointer shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-300 shrink-0">
+              <Bell className="w-5 h-5 animate-bounce" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-amber-300 uppercase tracking-wider">
+                  Alertas de Prazos & Cobranças
+                </span>
+                <span className="text-[11px] text-[#a89c93]">
+                  • {dueSoonInstallments.length + overdueInstallments.length} parcelas para atenção
+                </span>
+              </div>
+              <p className="text-xs text-[#fcf8f5] mt-0.5">
+                {overdueInstallments.length > 0 ? (
+                  <strong className="text-rose-400 font-semibold">{overdueInstallments.length} parcela(s) vencida(s)</strong>
+                ) : null}
+                {overdueInstallments.length > 0 && dueSoonInstallments.length > 0 ? ' e ' : null}
+                {dueSoonInstallments.length > 0 ? (
+                  <strong className="text-amber-300 font-semibold">{dueSoonInstallments.length} parcela(s) a vencer nos próximos 7 dias</strong>
+                ) : null}
+                {'. Clique para abrir e avisar clientes pelo WhatsApp com 1 clique.'}
+              </p>
+            </div>
+          </div>
+
+          <div
+            className="flex items-center gap-1.5 text-xs font-bold shrink-0"
+            style={{ color: 'var(--theme-primary)' }}
+          >
+            <span>Acessar Cobranças</span>
+            <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+          </div>
+        </section>
+      )}
+
       {/* 2. Studio Metrics Bar */}
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="p-4 rounded-2xl bg-[#1a1614] border border-[#3d342f] space-y-1">
           <div className="flex items-center justify-between text-xs text-[#a89c93]">
             <span>Total de Projetos</span>
-            <Building className="w-4 h-4 text-[#c58a4b]" />
+            <Building className="w-4 h-4" style={{ color: 'var(--theme-primary)' }} />
           </div>
           <p className="text-2xl font-bold text-[#fcf8f5] font-serif">
             {architectureProjects.length}
           </p>
-          <span className="text-[11px] text-[#d48b8e]">
+          <span className="text-[11px]" style={{ color: 'var(--theme-accent)' }}>
             {deliveredProjectsCount} entregues • {inProgressProjectsCount} em andamento
           </span>
         </div>
@@ -314,7 +409,7 @@ export const HomeProjectsTab: React.FC<HomeProjectsTabProps> = ({
         <div className="p-4 rounded-2xl bg-[#1a1614] border border-[#3d342f] space-y-1">
           <div className="flex items-center justify-between text-xs text-[#a89c93]">
             <span>Área Total Projetada</span>
-            <Layers className="w-4 h-4 text-[#d48b8e]" />
+            <Layers className="w-4 h-4" style={{ color: 'var(--theme-accent)' }} />
           </div>
           <p className="text-2xl font-bold text-[#fcf8f5] font-serif">
             {totalM2} <span className="text-sm font-sans font-normal text-[#a89c93]">m²</span>
@@ -336,12 +431,13 @@ export const HomeProjectsTab: React.FC<HomeProjectsTabProps> = ({
         <div className="p-4 rounded-2xl bg-[#1a1614] border border-[#3d342f] space-y-1">
           <div className="flex items-center justify-between text-xs text-[#a89c93]">
             <span>Clientes Atendidos</span>
-            <Users className="w-4 h-4 text-[#c58a4b]" />
+            <Users className="w-4 h-4" style={{ color: 'var(--theme-primary)' }} />
           </div>
           <p className="text-2xl font-bold text-[#fcf8f5] font-serif">{clients.length}</p>
           <button
             onClick={() => onNavigateTab('freelance')}
-            className="text-[11px] text-[#d49454] hover:underline flex items-center gap-0.5"
+            className="text-[11px] hover:underline flex items-center gap-0.5"
+            style={{ color: 'var(--theme-primary)' }}
           >
             Ver cadastro de clientes →
           </button>
@@ -354,11 +450,11 @@ export const HomeProjectsTab: React.FC<HomeProjectsTabProps> = ({
         <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
           <div>
             <h2 className="text-xl font-bold text-[#fcf8f5] font-serif flex items-center gap-2">
-              <Camera className="w-5 h-5 text-[#c58a4b]" />
-              <span>Projetos & Portfólio de Interiores</span>
+              <Camera className="w-5 h-5" style={{ color: 'var(--theme-primary)' }} />
+              <span>{currentNiche.projectSectionTitle}</span>
             </h2>
             <p className="text-xs text-[#a89c93]">
-              Fotos de projetos realizados, renders 3D, especificações e acompanhamento de obras.
+              {currentNiche.projectSectionSubtitle}
             </p>
           </div>
 
@@ -371,7 +467,7 @@ export const HomeProjectsTab: React.FC<HomeProjectsTabProps> = ({
                 placeholder="Buscar por projeto, cliente ou material..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 rounded-xl bg-[#1a1614] border border-[#3d342f] text-xs text-[#fcf8f5] placeholder-[#a89c93] focus:outline-none focus:border-[#c58a4b] transition-colors"
+                className="w-full pl-9 pr-3 py-2 rounded-xl bg-[#1a1614] border border-[#3d342f] text-xs text-[#fcf8f5] placeholder-[#a89c93] focus:outline-none focus:border-[var(--theme-primary)] transition-colors"
               />
             </div>
 
@@ -379,7 +475,7 @@ export const HomeProjectsTab: React.FC<HomeProjectsTabProps> = ({
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 rounded-xl bg-[#1a1614] border border-[#3d342f] text-xs text-[#fcf8f5] focus:outline-none focus:border-[#c58a4b] transition-colors"
+              className="px-3 py-2 rounded-xl bg-[#1a1614] border border-[#3d342f] text-xs text-[#fcf8f5] focus:outline-none focus:border-[var(--theme-primary)] transition-colors"
             >
               <option value="all">Todos os Status</option>
               <option value="estudo_preliminar">Estudo Preliminar</option>
@@ -401,9 +497,16 @@ export const HomeProjectsTab: React.FC<HomeProjectsTabProps> = ({
                 onClick={() => setSelectedCategory(cat.id)}
                 className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
                   isSelected
-                    ? 'bg-[#c58a4b] text-black shadow-md shadow-[#c58a4b]/20 font-bold'
+                    ? 'text-black font-bold shadow-md'
                     : 'bg-[#1a1614] text-[#a89c93] hover:text-[#fcf8f5] hover:bg-[#28221e] border border-[#3d342f]'
                 }`}
+                style={
+                  isSelected
+                    ? {
+                        backgroundColor: 'var(--theme-primary)',
+                      }
+                    : undefined
+                }
               >
                 {cat.label}
               </button>
@@ -414,22 +517,39 @@ export const HomeProjectsTab: React.FC<HomeProjectsTabProps> = ({
         {/* Projects Cards Grid */}
         {filteredProjects.length === 0 ? (
           <div className="text-center py-16 px-4 bg-[#1a1614] border border-dashed border-[#3d342f] rounded-2xl">
-            <Camera className="w-10 h-10 text-[#a89c93] mx-auto mb-3 opacity-50" />
+            <Camera className="w-10 h-10 text-[var(--theme-primary)] mx-auto mb-3 opacity-70" />
             <h3 className="text-base font-bold text-[#fcf8f5] font-serif mb-1">
-              Nenhum projeto encontrado
+              {architectureProjects.length === 0
+                ? 'Seu escritório está limpo e pronto para novos projetos!'
+                : 'Nenhum projeto encontrado para este filtro'}
             </h3>
-            <p className="text-xs text-[#a89c93] mb-4">
-              Não encontramos projetos para os filtros selecionados.
+            <p className="text-xs text-[#a89c93] max-w-md mx-auto mb-5">
+              {architectureProjects.length === 0
+                ? 'Cadastre seu primeiro projeto, envie fotos dos ambientes e acompanhe os honorários, ou carregue dados de demonstração para explorar o sistema.'
+                : 'Tente alterar os termos de busca ou remover os filtros de categoria/status.'}
             </p>
-            <button
-              onClick={() => {
-                setEditingProject(null);
-                setIsAddModalOpen(true);
-              }}
-              className="px-4 py-2 rounded-xl bg-[#c58a4b] text-black font-bold text-xs"
-            >
-              + Adicionar Novo Projeto
-            </button>
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <button
+                onClick={() => {
+                  setEditingProject(null);
+                  setIsAddModalOpen(true);
+                }}
+                className="px-5 py-2.5 rounded-xl text-black font-bold text-xs shadow-lg hover:brightness-110 active:scale-95 transition-all"
+                style={{
+                  backgroundColor: 'var(--theme-primary)',
+                }}
+              >
+                + Cadastrar Novo Projeto
+              </button>
+              {architectureProjects.length === 0 && (
+                <button
+                  onClick={() => loadDemoData()}
+                  className="px-4 py-2.5 rounded-xl bg-[#28221e] hover:bg-[#342c27] text-[#fcf8f5] font-semibold text-xs border border-[#3d342f] transition-all"
+                >
+                  Carregar Demonstração
+                </button>
+              )}
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -441,7 +561,7 @@ export const HomeProjectsTab: React.FC<HomeProjectsTabProps> = ({
               return (
                 <div
                   key={proj.id}
-                  className="group relative flex flex-col bg-[#1a1614] border border-[#3d342f] hover:border-[#c58a4b]/60 rounded-2xl overflow-hidden shadow-lg transition-all duration-300 hover:-translate-y-1"
+                  className="group relative flex flex-col bg-[#1a1614] border border-[#3d342f] hover:border-[var(--theme-primary)]/60 rounded-2xl overflow-hidden shadow-lg transition-all duration-300 hover:-translate-y-1"
                 >
                   {/* Project Image & Overlay */}
                   <div
@@ -458,12 +578,19 @@ export const HomeProjectsTab: React.FC<HomeProjectsTabProps> = ({
                     {/* Status badge */}
                     <div className="absolute top-3 left-3 flex items-center gap-1.5">
                       <span
-                        className={`px-2.5 py-1 rounded-full text-[11px] font-bold tracking-wide border shadow backdrop-blur-md ${statusBadge.bg}`}
+                        className="px-2.5 py-1 rounded-full text-[11px] font-bold tracking-wide border shadow backdrop-blur-md"
+                        style={statusBadge.style}
                       >
                         {statusBadge.label}
                       </span>
                       {hasBeforeAfter && (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#d48b8e]/90 text-black border border-[#d48b8e] shadow">
+                        <span
+                          className="px-2 py-0.5 rounded-full text-[10px] font-bold text-black border shadow"
+                          style={{
+                            backgroundColor: 'var(--theme-accent)',
+                            borderColor: 'var(--theme-accent)',
+                          }}
+                        >
                           Antes & Depois
                         </span>
                       )}
@@ -471,14 +598,14 @@ export const HomeProjectsTab: React.FC<HomeProjectsTabProps> = ({
 
                     {/* Photos count badge */}
                     <div className="absolute top-3 right-3 px-2.5 py-1 rounded-lg bg-black/70 text-white text-[11px] font-medium backdrop-blur-md flex items-center gap-1">
-                      <Camera className="w-3.5 h-3.5 text-[#c58a4b]" />
+                      <Camera className="w-3.5 h-3.5" style={{ color: 'var(--theme-primary)' }} />
                       <span>{totalPhotos} foto(s)</span>
                     </div>
 
                     {/* Quick Expand hover icon */}
                     <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                       <div className="px-4 py-2 rounded-xl bg-black/80 text-[#fcf8f5] text-xs font-bold flex items-center gap-1.5 border border-[#3d342f] shadow-2xl backdrop-blur-md">
-                        <Eye className="w-4 h-4 text-[#c58a4b]" /> Ver Galeria Completa
+                        <Eye className="w-4 h-4" style={{ color: 'var(--theme-primary)' }} /> Ver Galeria Completa
                       </div>
                     </div>
                   </div>
@@ -487,29 +614,32 @@ export const HomeProjectsTab: React.FC<HomeProjectsTabProps> = ({
                   <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-[11px] font-semibold text-[#d48b8e] uppercase tracking-wider">
+                        <span
+                          className="text-[11px] font-semibold uppercase tracking-wider"
+                          style={{ color: 'var(--theme-accent)' }}
+                        >
                           {proj.category.replace('_', ' ')}
                         </span>
                         {proj.areaM2 && (
                           <span className="text-xs text-[#a89c93] flex items-center gap-1">
-                            <Layers className="w-3 h-3 text-[#c58a4b]" /> {proj.areaM2} m²
+                            <Layers className="w-3 h-3" style={{ color: 'var(--theme-primary)' }} /> {proj.areaM2} m²
                           </span>
                         )}
                       </div>
 
                       <h3
                         onClick={() => setSelectedProjectForDetail(proj)}
-                        className="text-lg font-bold text-[#fcf8f5] font-serif leading-snug hover:text-[#c58a4b] transition-colors cursor-pointer"
+                        className="text-lg font-bold text-[#fcf8f5] font-serif leading-snug hover:text-[var(--theme-primary)] transition-colors cursor-pointer"
                       >
                         {proj.title}
                       </h3>
 
                       <div className="flex items-center justify-between text-xs text-[#a89c93] pt-1">
                         <span className="flex items-center gap-1">
-                          <User className="w-3.5 h-3.5 text-[#c58a4b]" /> {proj.clientName}
+                          <User className="w-3.5 h-3.5" style={{ color: 'var(--theme-primary)' }} /> {proj.clientName}
                         </span>
                         <span className="flex items-center gap-1">
-                          <MapPin className="w-3.5 h-3.5 text-[#d48b8e]" /> {proj.location}
+                          <MapPin className="w-3.5 h-3.5" style={{ color: 'var(--theme-accent)' }} /> {proj.location}
                         </span>
                       </div>
 
@@ -550,7 +680,8 @@ export const HomeProjectsTab: React.FC<HomeProjectsTabProps> = ({
                       <div className="flex items-center gap-1.5">
                         <button
                           onClick={() => handleQuickAddPhoto(proj.id)}
-                          className="p-2 rounded-lg bg-[#28221e] hover:bg-[#3d342f] text-[#d48b8e] hover:text-[#e29a9b] border border-[#3d342f] transition-colors"
+                          className="p-2 rounded-lg bg-[#28221e] hover:bg-[#3d342f] hover:text-[#e29a9b] border border-[#3d342f] transition-colors"
+                          style={{ color: 'var(--theme-accent)' }}
                           title="Adicionar mais fotos a este projeto"
                         >
                           <Camera className="w-3.5 h-3.5" />
@@ -566,7 +697,12 @@ export const HomeProjectsTab: React.FC<HomeProjectsTabProps> = ({
                         </button>
                         <button
                           onClick={() => setSelectedProjectForDetail(proj)}
-                          className="px-3 py-1.5 rounded-lg bg-[#c58a4b]/20 hover:bg-[#c58a4b]/30 text-[#d49454] text-xs font-bold border border-[#c58a4b]/30 transition-colors"
+                          className="px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                          style={{
+                            backgroundColor: 'var(--theme-badge-bg)',
+                            color: 'var(--theme-badge-text)',
+                            border: '1px solid var(--theme-badge-border)',
+                          }}
                         >
                           Ver Fotos
                         </button>

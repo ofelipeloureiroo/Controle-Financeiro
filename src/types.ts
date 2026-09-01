@@ -105,9 +105,13 @@ export interface Client {
   company?: string;
   email?: string;
   phone?: string;
-  state: string; // UF: SP, RJ, MG, etc.
+  country?: string; // 'BR' | 'US' | 'PT' | 'IT' | 'ES' | 'GB' | 'FR' | 'DE' | 'CH' | 'AE' | 'CA' | 'AU' | 'JP' | 'AR' | etc.
+  countryName?: string; // 'Brasil', 'Estados Unidos', 'Portugal', etc.
+  countryFlag?: string; // '🇧🇷', '🇺🇸', '🇵🇹', etc.
+  state: string; // UF or Region: SP, RJ, FL, Lisboa, Milão, etc.
   city: string;
   serviceType: string;
+  currency?: string; // 'BRL' | 'USD' | 'EUR' | 'GBP'
   totalBilled: number;
   totalPaid: number;
   pendingAmount: number;
@@ -125,8 +129,12 @@ export interface FreelanceProject {
   title: string;
   description?: string;
   serviceType: string;
+  country?: string;
+  countryName?: string;
+  countryFlag?: string;
   state: string;
   city: string;
+  currency?: string;
   totalValue: number;
   paidValue: number;
   status: 'prospect' | 'in_progress' | 'delivered' | 'paid' | 'cancelled';
@@ -157,15 +165,64 @@ export interface CategoryBudget {
   iconName: string;
 }
 
+export interface ConstructionReport {
+  id: string;
+  date: string;
+  text: string;
+  images?: string[];
+}
+
+export type NicheType =
+  | 'vendas'
+  | 'advocacia'
+  | 'arquitetura'
+  | 'engenharia'
+  | 'design'
+  | 'consultoria'
+  | 'saude_estetica'
+  | 'imobiliario'
+  | 'fotografia'
+  | 'tecnologia'
+  | 'marketing'
+  | 'educacao'
+  | 'eventos'
+  | 'autonomo'
+  | 'outro';
+
+export type ThemeColorId =
+  | 'gold'
+  | 'emerald'
+  | 'sapphire'
+  | 'amethyst'
+  | 'ruby'
+  | 'amber'
+  | 'cyan'
+  | 'slate';
+
 export interface ArchitectureProject {
   id: string;
   title: string;
   clientName: string;
-  category: 'residencial' | 'interiores' | 'cozinha_gourmet' | 'suite_master' | 'living' | 'comercial' | 'consultoria';
-  location: string; // e.g. "Rio Bonito, RJ"
-  state: string; // UF
+  clientPhone?: string;
+  clientEmail?: string;
+  category:
+    | 'residencial'
+    | 'interiores'
+    | 'cozinha_gourmet'
+    | 'suite_master'
+    | 'living'
+    | 'comercial'
+    | 'consultoria'
+    | string;
+  country?: string;
+  countryName?: string;
+  countryFlag?: string;
+  location: string; // e.g. "Miami, Flórida (EUA)" or "Cascais, Lisboa (Portugal)" or "Rio Bonito, RJ"
+  state: string; // UF or Region
   areaM2?: number; // e.g. 140
   honorarios?: number; // e.g. 12500
+  paidAmount?: number;
+  currency?: string;
   status: 'estudo_preliminar' | 'anteprojeto' | 'executivo' | 'obra' | 'entregue';
   coverImage: string;
   images: string[];
@@ -173,9 +230,32 @@ export interface ArchitectureProject {
   afterImage?: string;
   description?: string;
   deliveryDate?: string;
+  startDate?: string;
   featured?: boolean;
   tags?: string[];
   createdAt?: string;
+  reports?: ConstructionReport[];
+}
+
+export interface WorldCountry {
+  code: string; // e.g. 'BR', 'US', 'PT', 'IT'
+  name: string; // 'Brasil', 'Estados Unidos', 'Portugal'
+  flag: string; // '🇧🇷', '🇺🇸', '🇵🇹'
+  continent: 'América do Sul' | 'América do Norte' | 'Europa' | 'Ásia' | 'Oceania' | 'África' | 'Oriente Médio' | 'Oriente Médio & Ásia';
+  capital: string;
+  currency: string; // 'BRL', 'USD', 'EUR', 'GBP'
+  currencySymbol: string;
+  cx: number; // SVG coordinates on 1000x520 world projection
+  cy: number;
+  polygonPath?: string;
+  timeZone: string;
+  dialCode?: string;
+}
+
+export interface ContinentInfo {
+  name: string;
+  color: string;
+  countries: string[]; // country codes
 }
 
 export interface BrazilStateInfo {
@@ -200,5 +280,50 @@ export interface ArchitectProfile {
   instagramUrl: string;
   followersCount: string;
   rating: number;
+  pixKey?: string;
+  pixKeyType?: 'cpf' | 'cnpj' | 'email' | 'telefone' | 'aleatoria';
+  bankInfo?: string;
+  niche?: NicheType;
+  nicheCustomName?: string;
+  themeColor?: ThemeColorId;
+  customAccentColor?: string;
+  logoUrl?: string;
+  websiteUrl?: string;
+}
+
+export interface ProjectInstallment {
+  id: string;
+  projectId: string;
+  projectTitle: string;
+  clientName: string;
+  clientPhone?: string;
+  installmentNumber: number;
+  totalInstallments: number;
+  description: string;
+  amount: number;
+  dueDate: string; // YYYY-MM-DD
+  status: 'pending' | 'paid' | 'overdue';
+  paidDate?: string;
+  paidAmount?: number;
+  bankAccountId?: string;
+  pixKey?: string;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface ProjectMilestone {
+  id: string;
+  projectId: string;
+  projectTitle: string;
+  clientName: string;
+  clientPhone?: string;
+  title: string;
+  stage: 'briefing' | 'estudo_preliminar' | 'anteprojeto' | 'executivo' | 'obra' | 'entregue';
+  dueDate: string; // YYYY-MM-DD
+  completed: boolean;
+  completedDate?: string;
+  priority: 'baixa' | 'media' | 'alta' | 'urgente';
+  notes?: string;
+  createdAt: string;
 }
 

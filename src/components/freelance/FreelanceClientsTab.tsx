@@ -9,6 +9,7 @@ import {
   Clock,
   DollarSign,
   Edit2,
+  Globe,
   Mail,
   MapPin,
   MessageCircle,
@@ -23,6 +24,7 @@ import {
   Users,
 } from 'lucide-react';
 import { BRAZIL_STATES } from '../../data/brazilMapData';
+import { WORLD_COUNTRIES } from '../../data/worldMapData';
 import { useFinance } from '../../context/FinanceContext';
 import { Client, FreelanceProject } from '../../types';
 import { formatCurrency, formatDate } from '../../utils/formatters';
@@ -49,7 +51,7 @@ export const FreelanceClientsTab: React.FC<FreelanceClientsTabProps> = ({
 
   const [activeSubTab, setActiveSubTab] = useState<'clients' | 'projects'>('clients');
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedStateFilter, setSelectedStateFilter] = useState('all');
+  const [selectedLocationFilter, setSelectedLocationFilter] = useState('all');
 
   // Client modal state
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
@@ -58,8 +60,10 @@ export const FreelanceClientsTab: React.FC<FreelanceClientsTabProps> = ({
   const [clientCompany, setClientCompany] = useState('');
   const [clientEmail, setClientEmail] = useState('');
   const [clientPhone, setClientPhone] = useState('');
+  const [clientCountry, setClientCountry] = useState('BR');
   const [clientState, setClientState] = useState('SP');
   const [clientCity, setClientCity] = useState('');
+  const [clientCurrency, setClientCurrency] = useState<'BRL' | 'USD' | 'EUR' | 'GBP' | 'AED'>('BRL');
   const [clientService, setClientService] = useState('');
   const [clientNotes, setClientNotes] = useState('');
 
@@ -90,26 +94,31 @@ export const FreelanceClientsTab: React.FC<FreelanceClientsTabProps> = ({
   // Filtered clients
   const filteredClients = useMemo(() => {
     return clients.filter((c) => {
-      if (selectedStateFilter !== 'all' && c.state.toUpperCase() !== selectedStateFilter.toUpperCase()) {
-        return false;
+      if (selectedLocationFilter !== 'all') {
+        const isCountryMatch = (c.country || 'BR').toUpperCase() === selectedLocationFilter.toUpperCase();
+        const isStateMatch = (c.state || '').toUpperCase() === selectedLocationFilter.toUpperCase();
+        if (!isCountryMatch && !isStateMatch) return false;
       }
       if (searchTerm) {
         const term = searchTerm.toLowerCase();
         const matchesName = c.name.toLowerCase().includes(term);
         const matchesCompany = c.company?.toLowerCase().includes(term);
         const matchesCity = c.city.toLowerCase().includes(term);
+        const matchesCountry = c.countryName?.toLowerCase().includes(term);
         const matchesService = c.serviceType.toLowerCase().includes(term);
-        if (!matchesName && !matchesCompany && !matchesCity && !matchesService) return false;
+        if (!matchesName && !matchesCompany && !matchesCity && !matchesService && !matchesCountry) return false;
       }
       return true;
     });
-  }, [clients, selectedStateFilter, searchTerm]);
+  }, [clients, selectedLocationFilter, searchTerm]);
 
   // Filtered projects
   const filteredProjects = useMemo(() => {
     return freelanceProjects.filter((p) => {
-      if (selectedStateFilter !== 'all' && p.state.toUpperCase() !== selectedStateFilter.toUpperCase()) {
-        return false;
+      if (selectedLocationFilter !== 'all') {
+        const isCountryMatch = (p.country || 'BR').toUpperCase() === selectedLocationFilter.toUpperCase();
+        const isStateMatch = (p.state || '').toUpperCase() === selectedLocationFilter.toUpperCase();
+        if (!isCountryMatch && !isStateMatch) return false;
       }
       if (searchTerm) {
         const term = searchTerm.toLowerCase();
@@ -120,7 +129,7 @@ export const FreelanceClientsTab: React.FC<FreelanceClientsTabProps> = ({
       }
       return true;
     });
-  }, [freelanceProjects, selectedStateFilter, searchTerm]);
+  }, [freelanceProjects, selectedLocationFilter, searchTerm]);
 
   // Handlers for client modal
   const handleOpenAddClient = () => {
@@ -129,8 +138,10 @@ export const FreelanceClientsTab: React.FC<FreelanceClientsTabProps> = ({
     setClientCompany('');
     setClientEmail('');
     setClientPhone('');
+    setClientCountry('BR');
     setClientState('SP');
     setClientCity('');
+    setClientCurrency('BRL');
     setClientService('');
     setClientNotes('');
     setIsClientModalOpen(true);
@@ -142,8 +153,10 @@ export const FreelanceClientsTab: React.FC<FreelanceClientsTabProps> = ({
     setClientCompany(c.company || '');
     setClientEmail(c.email || '');
     setClientPhone(c.phone || '');
+    setClientCountry(c.country || 'BR');
     setClientState(c.state);
     setClientCity(c.city);
+    setClientCurrency(c.currency || 'BRL');
     setClientService(c.serviceType);
     setClientNotes(c.notes || '');
     setIsClientModalOpen(true);
@@ -151,7 +164,9 @@ export const FreelanceClientsTab: React.FC<FreelanceClientsTabProps> = ({
 
   const handleSaveClient = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!clientName.trim() || !clientState || !clientCity) return;
+    if (!clientName.trim() || !clientCity) return;
+
+    const countryObj = WORLD_COUNTRIES.find((w) => w.code === clientCountry);
 
     if (editingClient) {
       updateClient(editingClient.id, {
@@ -159,7 +174,11 @@ export const FreelanceClientsTab: React.FC<FreelanceClientsTabProps> = ({
         company: clientCompany,
         email: clientEmail,
         phone: clientPhone,
-        state: clientState.toUpperCase(),
+        country: clientCountry,
+        countryName: countryObj?.name || (clientCountry === 'BR' ? 'Brasil' : 'Exterior'),
+        countryFlag: countryObj?.flag || (clientCountry === 'BR' ? '🇧🇷' : '🌍'),
+        currency: clientCurrency,
+        state: clientCountry === 'BR' ? clientState.toUpperCase() : clientState || clientCity,
         city: clientCity,
         serviceType: clientService || 'Serviços Freelancer',
         notes: clientNotes,
@@ -170,7 +189,11 @@ export const FreelanceClientsTab: React.FC<FreelanceClientsTabProps> = ({
         company: clientCompany,
         email: clientEmail,
         phone: clientPhone,
-        state: clientState.toUpperCase(),
+        country: clientCountry,
+        countryName: countryObj?.name || (clientCountry === 'BR' ? 'Brasil' : 'Exterior'),
+        countryFlag: countryObj?.flag || (clientCountry === 'BR' ? '🇧🇷' : '🌍'),
+        currency: clientCurrency,
+        state: clientCountry === 'BR' ? clientState.toUpperCase() : clientState || clientCity,
         city: clientCity,
         serviceType: clientService || 'Serviços Freelancer',
         notes: clientNotes,
@@ -361,31 +384,40 @@ export const FreelanceClientsTab: React.FC<FreelanceClientsTabProps> = ({
         )}
       </div>
 
-      {/* Search and State Filter */}
+      {/* Search and Location Filter */}
       <div className="p-5 rounded-2xl bg-[#18181b] border border-[#27272a] grid grid-cols-1 sm:grid-cols-12 gap-3">
-        <div className="sm:col-span-8 relative">
+        <div className="sm:col-span-7 relative">
           <Search className="w-4 h-4 text-[#71717a] absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Buscar por cliente, empresa, cidade ou serviço..."
+            placeholder="Buscar por cliente, empresa, país, cidade ou serviço..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-[#09090b] border border-[#27272a] text-[#fafafa] text-xs focus:outline-none focus:border-blue-500"
           />
         </div>
 
-        <div className="sm:col-span-4">
+        <div className="sm:col-span-5">
           <select
-            value={selectedStateFilter}
-            onChange={(e) => setSelectedStateFilter(e.target.value)}
+            value={selectedLocationFilter}
+            onChange={(e) => setSelectedLocationFilter(e.target.value)}
             className="w-full px-3.5 py-2.5 rounded-xl bg-[#09090b] border border-[#27272a] text-[#fafafa] text-xs focus:outline-none focus:border-blue-500 cursor-pointer"
           >
-            <option value="all">Filtrar por Estado (Todos)</option>
-            {BRAZIL_STATES.map((st) => (
-              <option key={st.uf} value={st.uf}>
-                {st.uf} - {st.name}
-              </option>
-            ))}
+            <option value="all">🌐 Todas as Localizações (Brasil & Exterior)</option>
+            <optgroup label="🌍 Países Internacionais">
+              {WORLD_COUNTRIES.filter((c) => c.code !== 'BR').map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.flag} {c.name} ({c.code})
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="🇧🇷 Estados do Brasil (UFs)">
+              {BRAZIL_STATES.map((st) => (
+                <option key={st.uf} value={st.uf}>
+                  🇧🇷 {st.uf} - {st.name}
+                </option>
+              ))}
+            </optgroup>
           </select>
         </div>
       </div>
@@ -393,108 +425,123 @@ export const FreelanceClientsTab: React.FC<FreelanceClientsTabProps> = ({
       {/* CLIENTS TAB VIEW */}
       {activeSubTab === 'clients' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredClients.map((cli) => (
-            <div
-              key={cli.id}
-              className="p-5 rounded-2xl bg-[#18181b] border border-[#27272a] hover:border-[#3f3f46] transition-all flex flex-col justify-between space-y-4"
-            >
-              <div className="space-y-2.5">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                        {cli.state}
-                      </span>
-                      <h3 className="font-bold text-[#fafafa] text-sm">{cli.name}</h3>
+          {filteredClients.map((cli) => {
+            const isBrazil = !cli.country || cli.country === 'BR';
+            const countryObj = WORLD_COUNTRIES.find((c) => c.code === (cli.country || 'BR'));
+
+            return (
+              <div
+                key={cli.id}
+                className="p-5 rounded-2xl bg-[#18181b] border border-[#27272a] hover:border-[#3f3f46] transition-all flex flex-col justify-between space-y-4"
+              >
+                <div className="space-y-2.5">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 flex items-center gap-1">
+                          <span>{cli.countryFlag || countryObj?.flag || (isBrazil ? '🇧🇷' : '🌍')}</span>
+                          <span>{isBrazil ? cli.state : cli.country}</span>
+                        </span>
+                        <h3 className="font-bold text-[#fafafa] text-sm">{cli.name}</h3>
+                      </div>
+                      {cli.company && (
+                        <p className="text-[11px] text-[#a1a1aa] mt-0.5 flex items-center gap-1">
+                          <Building2 className="w-3 h-3 text-[#71717a]" />
+                          {cli.company}
+                        </p>
+                      )}
                     </div>
-                    {cli.company && (
-                      <p className="text-[11px] text-[#a1a1aa] mt-0.5 flex items-center gap-1">
-                        <Building2 className="w-3 h-3 text-[#71717a]" />
-                        {cli.company}
-                      </p>
+
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleOpenEditClient(cli)}
+                        className="p-1.5 rounded-lg bg-[#27272a] hover:bg-[#3f3f46] text-[#a1a1aa] hover:text-[#fafafa] transition-colors cursor-pointer"
+                        title="Editar Cliente"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => deleteClient(cli.id)}
+                        className="p-1.5 rounded-lg bg-[#27272a] hover:bg-rose-500/20 text-[#a1a1aa] hover:text-rose-400 transition-colors cursor-pointer"
+                        title="Remover Cliente"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Location & Service */}
+                  <div className="space-y-1 text-xs">
+                    <div className="flex items-center gap-1.5 text-[#fafafa] font-medium">
+                      <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <span>
+                        {cli.city} {cli.state && !isBrazil ? `(${cli.state})` : ''} •{' '}
+                        <strong className="text-emerald-300">
+                          {cli.countryName || countryObj?.name || (isBrazil ? 'Brasil' : 'Exterior')}
+                        </strong>
+                      </span>
+                    </div>
+
+                    <div className="text-[11px] text-[#a1a1aa] truncate">
+                      Serviço: <strong className="text-[#fafafa]">{cli.serviceType}</strong>
+                    </div>
+
+                    {cli.currency && cli.currency !== 'BRL' && (
+                      <div className="text-[10px] text-amber-400 font-mono">
+                        Moeda do contrato: <strong>{cli.currency}</strong>
+                      </div>
                     )}
                   </div>
 
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => handleOpenEditClient(cli)}
-                      className="p-1.5 rounded-lg bg-[#27272a] hover:bg-[#3f3f46] text-[#a1a1aa] hover:text-[#fafafa] transition-colors cursor-pointer"
-                      title="Editar Cliente"
-                    >
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => deleteClient(cli.id)}
-                      className="p-1.5 rounded-lg bg-[#27272a] hover:bg-rose-500/20 text-[#a1a1aa] hover:text-rose-400 transition-colors cursor-pointer"
-                      title="Remover Cliente"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+                  {/* Contact info */}
+                  {(cli.phone || cli.email) && (
+                    <div className="flex items-center gap-2 pt-1 text-xs text-[#a1a1aa] flex-wrap">
+                      {cli.phone && (
+                        <a
+                          href={`https://wa.me/${cli.phone.replace(/\D/g, '')}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 transition-colors text-[11px]"
+                        >
+                          <MessageCircle className="w-3 h-3" /> WhatsApp
+                        </a>
+                      )}
+                      {cli.email && (
+                        <a
+                          href={`mailto:${cli.email}`}
+                          className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#27272a] hover:bg-[#3f3f46] text-[#fafafa] transition-colors text-[11px]"
+                        >
+                          <Mail className="w-3 h-3" /> Email
+                        </a>
+                      )}
+                    </div>
+                  )}
                 </div>
 
-                {/* Location & Service */}
-                <div className="space-y-1 text-xs">
-                  <div className="flex items-center gap-1.5 text-[#fafafa] font-medium">
-                    <MapPin className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>
-                      {cli.city} - {cli.state} (Brasil)
+                {/* Billing stats */}
+                <div className="pt-3 border-t border-[#27272a] flex items-center justify-between text-xs">
+                  <div>
+                    <span className="text-[10px] text-[#71717a] block">Total Faturado</span>
+                    <span className="font-bold text-[#fafafa] text-sm">
+                      {formatCurrency(cli.totalBilled)}
                     </span>
                   </div>
 
-                  <div className="text-[11px] text-[#a1a1aa] truncate">
-                    Serviço: <strong className="text-[#fafafa]">{cli.serviceType}</strong>
+                  <div className="text-right">
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        cli.pendingAmount > 0
+                          ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
+                          : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                      }`}
+                    >
+                      {cli.pendingAmount > 0 ? `Pendente: ${formatCurrency(cli.pendingAmount)}` : '100% Quitado'}
+                    </span>
                   </div>
                 </div>
-
-                {/* Contact info */}
-                {(cli.phone || cli.email) && (
-                  <div className="flex items-center gap-2 pt-1 text-xs text-[#a1a1aa]">
-                    {cli.phone && (
-                      <a
-                        href={`https://wa.me/55${cli.phone.replace(/\D/g, '')}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 transition-colors text-[11px]"
-                      >
-                        <MessageCircle className="w-3 h-3" /> WhatsApp
-                      </a>
-                    )}
-                    {cli.email && (
-                      <a
-                        href={`mailto:${cli.email}`}
-                        className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#27272a] hover:bg-[#3f3f46] text-[#fafafa] transition-colors text-[11px]"
-                      >
-                        <Mail className="w-3 h-3" /> Email
-                      </a>
-                    )}
-                  </div>
-                )}
               </div>
-
-              {/* Billing stats */}
-              <div className="pt-3 border-t border-[#27272a] flex items-center justify-between text-xs">
-                <div>
-                  <span className="text-[10px] text-[#71717a] block">Total Faturado</span>
-                  <span className="font-bold text-[#fafafa] text-sm">
-                    {formatCurrency(cli.totalBilled)}
-                  </span>
-                </div>
-
-                <div className="text-right">
-                  <span
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      cli.pendingAmount > 0
-                        ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
-                        : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                    }`}
-                  >
-                    {cli.pendingAmount > 0 ? `Pendente: ${formatCurrency(cli.pendingAmount)}` : '100% Quitado'}
-                  </span>
-                </div>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -583,8 +630,9 @@ export const FreelanceClientsTab: React.FC<FreelanceClientsTabProps> = ({
       {isClientModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
           <div className="w-full max-w-lg rounded-2xl bg-[#18181b] border border-[#27272a] p-6 shadow-2xl space-y-4">
-            <h3 className="text-base font-bold text-[#fafafa]">
-              {editingClient ? 'Editar Cliente' : 'Cadastrar Novo Cliente no Brasil'}
+            <h3 className="text-base font-bold text-[#fafafa] flex items-center gap-2">
+              <Globe className="w-5 h-5 text-blue-400" />
+              <span>{editingClient ? 'Editar Dados do Cliente' : 'Cadastrar Novo Cliente'}</span>
             </h3>
 
             <form onSubmit={handleSaveClient} className="space-y-3 text-xs">
@@ -593,7 +641,7 @@ export const FreelanceClientsTab: React.FC<FreelanceClientsTabProps> = ({
                   <label className="block text-[#a1a1aa] font-medium mb-1">Nome do Cliente *</label>
                   <input
                     type="text"
-                    placeholder="Ex: Carlos Silva, Studio Arquitetura..."
+                    placeholder="Ex: Carlos Silva, John Smith..."
                     value={clientName}
                     onChange={(e) => setClientName(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-[#09090b] border border-[#27272a] text-[#fafafa] focus:outline-none focus:border-blue-500"
@@ -604,7 +652,7 @@ export const FreelanceClientsTab: React.FC<FreelanceClientsTabProps> = ({
                   <label className="block text-[#a1a1aa] font-medium mb-1">Empresa / Razão Social</label>
                   <input
                     type="text"
-                    placeholder="Ex: Studio AD Ltda"
+                    placeholder="Ex: Studio AD Ltda, Miami Realty..."
                     value={clientCompany}
                     onChange={(e) => setClientCompany(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-[#09090b] border border-[#27272a] text-[#fafafa] focus:outline-none focus:border-blue-500"
@@ -612,28 +660,84 @@ export const FreelanceClientsTab: React.FC<FreelanceClientsTabProps> = ({
                 </div>
               </div>
 
-              {/* State and City Selection */}
+              {/* Country and Currency Selection */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[#a1a1aa] font-medium mb-1">Estado (UF do Brasil) *</label>
+                  <label className="block text-[#a1a1aa] font-medium mb-1">País *</label>
                   <select
-                    value={clientState}
-                    onChange={(e) => setClientState(e.target.value)}
+                    value={clientCountry}
+                    onChange={(e) => {
+                      const newCountry = e.target.value;
+                      setClientCountry(newCountry);
+                      const cObj = WORLD_COUNTRIES.find((c) => c.code === newCountry);
+                      if (cObj) {
+                        setClientCurrency((cObj.currency as any) || 'USD');
+                        if (cObj.dialCode && !clientPhone) {
+                          setClientPhone(`${cObj.dialCode} `);
+                        }
+                      }
+                    }}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-[#09090b] border border-[#27272a] text-[#fafafa] focus:outline-none focus:border-blue-500 cursor-pointer"
                     required
                   >
-                    {BRAZIL_STATES.map((st) => (
-                      <option key={st.uf} value={st.uf}>
-                        {st.uf} - {st.name} ({st.region})
+                    {WORLD_COUNTRIES.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.flag} {c.name} ({c.code})
                       </option>
                     ))}
                   </select>
+                </div>
+
+                <div>
+                  <label className="block text-[#a1a1aa] font-medium mb-1">Moeda de Cobrança</label>
+                  <select
+                    value={clientCurrency}
+                    onChange={(e) => setClientCurrency(e.target.value as any)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#09090b] border border-[#27272a] text-[#fafafa] focus:outline-none focus:border-blue-500 cursor-pointer"
+                  >
+                    <option value="BRL">BRL - Real Brasileiro (R$)</option>
+                    <option value="USD">USD - Dólar Americano ($)</option>
+                    <option value="EUR">EUR - Euro (€)</option>
+                    <option value="GBP">GBP - Libra Esterlina (£)</option>
+                    <option value="AED">AED - Dirham (AED)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* State and City Selection */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[#a1a1aa] font-medium mb-1">
+                    {clientCountry === 'BR' ? 'Estado (UF do Brasil) *' : 'Região / Província'}
+                  </label>
+                  {clientCountry === 'BR' ? (
+                    <select
+                      value={clientState}
+                      onChange={(e) => setClientState(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-[#09090b] border border-[#27272a] text-[#fafafa] focus:outline-none focus:border-blue-500 cursor-pointer"
+                      required
+                    >
+                      {BRAZIL_STATES.map((st) => (
+                        <option key={st.uf} value={st.uf}>
+                          {st.uf} - {st.name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      placeholder="Ex: Flórida, Lisboa, Lombardia..."
+                      value={clientState}
+                      onChange={(e) => setClientState(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-[#09090b] border border-[#27272a] text-[#fafafa] focus:outline-none focus:border-blue-500"
+                    />
+                  )}
                 </div>
                 <div>
                   <label className="block text-[#a1a1aa] font-medium mb-1">Cidade *</label>
                   <input
                     type="text"
-                    placeholder="Ex: São Paulo, Campinas, Curitiba..."
+                    placeholder="Ex: Miami, Lisboa, Milão, Rio Bonito..."
                     value={clientCity}
                     onChange={(e) => setClientCity(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-[#09090b] border border-[#27272a] text-[#fafafa] focus:outline-none focus:border-blue-500"
@@ -644,10 +748,10 @@ export const FreelanceClientsTab: React.FC<FreelanceClientsTabProps> = ({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[#a1a1aa] font-medium mb-1">Telefone / WhatsApp</label>
+                  <label className="block text-[#a1a1aa] font-medium mb-1">Telefone / WhatsApp com DDI</label>
                   <input
                     type="text"
-                    placeholder="Ex: (11) 98765-4321"
+                    placeholder="Ex: +1 (305) 555-0199 ou +55 21 9..."
                     value={clientPhone}
                     onChange={(e) => setClientPhone(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-[#09090b] border border-[#27272a] text-[#fafafa] focus:outline-none focus:border-blue-500"
@@ -657,7 +761,7 @@ export const FreelanceClientsTab: React.FC<FreelanceClientsTabProps> = ({
                   <label className="block text-[#a1a1aa] font-medium mb-1">E-mail</label>
                   <input
                     type="email"
-                    placeholder="cliente@empresa.com.br"
+                    placeholder="cliente@empresa.com"
                     value={clientEmail}
                     onChange={(e) => setClientEmail(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-[#09090b] border border-[#27272a] text-[#fafafa] focus:outline-none focus:border-blue-500"
@@ -669,7 +773,7 @@ export const FreelanceClientsTab: React.FC<FreelanceClientsTabProps> = ({
                 <label className="block text-[#a1a1aa] font-medium mb-1">Tipo Principal de Serviço</label>
                 <input
                   type="text"
-                  placeholder="Ex: Criação de Site, Identidade Visual, Tráfego Pago, Consultoria..."
+                  placeholder="Ex: Consultoria de Arquitetura, Interiores, Renders 3D..."
                   value={clientService}
                   onChange={(e) => setClientService(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-[#09090b] border border-[#27272a] text-[#fafafa] focus:outline-none focus:border-blue-500"
@@ -677,10 +781,10 @@ export const FreelanceClientsTab: React.FC<FreelanceClientsTabProps> = ({
               </div>
 
               <div>
-                <label className="block text-[#a1a1aa] font-medium mb-1">Notas / Observações</label>
+                <label className="block text-[#a1a1aa] font-medium mb-1">Notas / Observações / Fuso</label>
                 <textarea
                   rows={2}
-                  placeholder="Observações sobre o cliente, forma de pagamento preferida..."
+                  placeholder="Observações sobre fuso horário, alinhamento por videochamada..."
                   value={clientNotes}
                   onChange={(e) => setClientNotes(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-[#09090b] border border-[#27272a] text-[#fafafa] focus:outline-none focus:border-blue-500"

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useFinance } from '../../context/FinanceContext';
 import { ArchitectureProject } from '../../types';
+import { NICHES } from '../../utils/theme';
 
 interface AddProjectModalProps {
   isOpen: boolean;
@@ -19,25 +20,7 @@ interface AddProjectModalProps {
   initialProject?: ArchitectureProject | null;
 }
 
-const CATEGORY_OPTIONS = [
-  { value: 'residencial', label: 'Residencial Completo' },
-  { value: 'interiores', label: 'Design de Interiores' },
-  { value: 'cozinha_gourmet', label: 'Cozinha & Espaço Gourmet' },
-  { value: 'suite_master', label: 'Suíte Master & Closet' },
-  { value: 'living', label: 'Salas & Living Integrado' },
-  { value: 'comercial', label: 'Comercial & Consultório' },
-  { value: 'consultoria', label: 'Consultoria de Ambientes' },
-];
-
-const STATUS_OPTIONS = [
-  { value: 'estudo_preliminar', label: 'Estudo Preliminar' },
-  { value: 'anteprojeto', label: 'Anteprojeto 3D' },
-  { value: 'executivo', label: 'Projeto Executivo' },
-  { value: 'obra', label: 'Em Obra / Acompanhamento' },
-  { value: 'entregue', label: 'Fotografado & Entregue' },
-];
-
-// Sample architectural photos for quick insertion
+// Sample preset photos for quick insertion
 const PRESET_PHOTOS = [
   {
     name: 'Living Integrado & Madeira',
@@ -70,12 +53,15 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({
   onClose,
   initialProject,
 }) => {
-  const { addArchitectureProject, updateArchitectureProject, clients } = useFinance();
+  const { addArchitectureProject, updateArchitectureProject, clients, architectProfile } = useFinance();
+  const currentNiche = NICHES[architectProfile.niche || 'arquitetura'] || NICHES.arquitetura;
+  const categoryOptions = currentNiche.categories.filter((c) => c.id !== 'all' && c.id !== 'antes_depois');
+  const statusOptions = currentNiche.statusOptions;
 
   const [title, setTitle] = useState(initialProject?.title || '');
   const [clientName, setClientName] = useState(initialProject?.clientName || '');
   const [category, setCategory] = useState<ArchitectureProject['category']>(
-    initialProject?.category || 'residencial'
+    initialProject?.category || categoryOptions[0]?.id || 'residencial'
   );
   const [location, setLocation] = useState(initialProject?.location || 'Rio Bonito, RJ');
   const [state, setState] = useState(initialProject?.state || 'RJ');
@@ -258,15 +244,15 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({
 
             <div>
               <label className="block text-xs font-semibold text-[#d49454] uppercase tracking-wider mb-1.5">
-                Categoria do Ambiente
+                Categoria / Tipo de Entrega
               </label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value as ArchitectureProject['category'])}
                 className="w-full px-3.5 py-2.5 rounded-xl bg-[#12100e] border border-[#3d342f] text-[#fcf8f5] text-sm focus:outline-none focus:border-[#c58a4b] transition-colors"
               >
-                {CATEGORY_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
+                {categoryOptions.map((opt) => (
+                  <option key={opt.id} value={opt.id}>
                     {opt.label}
                   </option>
                 ))}
@@ -275,14 +261,14 @@ export const AddProjectModal: React.FC<AddProjectModalProps> = ({
 
             <div>
               <label className="block text-xs font-semibold text-[#d49454] uppercase tracking-wider mb-1.5">
-                Status do Projeto
+                Status / Fase Atual
               </label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as ArchitectureProject['status'])}
                 className="w-full px-3.5 py-2.5 rounded-xl bg-[#12100e] border border-[#3d342f] text-[#fcf8f5] text-sm focus:outline-none focus:border-[#c58a4b] transition-colors"
               >
-                {STATUS_OPTIONS.map((opt) => (
+                {statusOptions.map((opt) => (
                   <option key={opt.value} value={opt.value}>
                     {opt.label}
                   </option>

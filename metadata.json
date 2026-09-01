@@ -1,6 +1,6 @@
 {
-  "name": "Laíne Paula Arquiteta",
-  "description": "Portfólio de projetos de arquitetura e interiores, galeria de fotos, gestão de clientes, finanças e acompanhamento de obras para Laíne Paula.",
+  "name": "Meu Escritório Online",
+  "description": "Plataforma de gestão de vendas, advocacia, consultorias, serviços, clientes, finanças e projetos (SaaS).",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

@@ -1,5 +1,8 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { useAuth } from './AuthContext';
 import {
+  EMPTY_BANK_ACCOUNTS,
+  EMPTY_HOUSE_MORTGAGE,
   INITIAL_ARCHITECT_PROFILE,
   INITIAL_ARCHITECTURE_PROJECTS,
   INITIAL_BANK_ACCOUNTS,
@@ -8,6 +11,8 @@ import {
   INITIAL_DEBTS,
   INITIAL_FREELANCE_PROJECTS,
   INITIAL_HOUSE_MORTGAGE,
+  INITIAL_PROJECT_INSTALLMENTS,
+  INITIAL_PROJECT_MILESTONES,
   INITIAL_SAVINGS_GOALS,
   INITIAL_TRANSACTIONS,
 } from '../data/initialData';
@@ -17,18 +22,26 @@ import {
   BankAccount,
   CategoryBudget,
   Client,
+  ConstructionReport,
   Debt,
   ExtraAmortization,
   FreelanceProject,
   HouseMortgage,
+  NicheType,
+  ProjectInstallment,
+  ProjectMilestone,
   SavingsGoal,
+  ThemeColorId,
   Transaction,
 } from '../types';
+import { applyThemeToDocument, NICHES, THEMES } from '../utils/theme';
 
 interface FinanceContextType {
   architectProfile: ArchitectProfile;
   updateArchitectProfile: (profile: Partial<ArchitectProfile>) => void;
   updateProfilePhoto: (photoUrl: string) => void;
+  changeTheme: (theme: ThemeColorId) => void;
+  changeNiche: (niche: NicheType) => void;
   transactions: Transaction[];
   bankAccounts: BankAccount[];
   houseMortgage: HouseMortgage;
@@ -36,6 +49,8 @@ interface FinanceContextType {
   clients: Client[];
   freelanceProjects: FreelanceProject[];
   architectureProjects: ArchitectureProject[];
+  projectInstallments: ProjectInstallment[];
+  projectMilestones: ProjectMilestone[];
   savingsGoals: SavingsGoal[];
   categoryBudgets: CategoryBudget[];
   selectedMonth: string; // YYYY-MM
@@ -47,6 +62,19 @@ interface FinanceContextType {
   deleteArchitectureProject: (id: string) => void;
   addPhotoToProject: (projectId: string, photoUrl: string) => void;
   removePhotoFromProject: (projectId: string, photoIndex: number) => void;
+  updateProjectStatus: (id: string, newStatus: ArchitectureProject['status']) => void;
+  addConstructionReport: (projectId: string, report: Omit<ConstructionReport, 'id'>) => void;
+
+  // Actions - Project Installments & Milestones (Prazos & Cobranças)
+  addProjectInstallment: (installment: Omit<ProjectInstallment, 'id' | 'createdAt'>) => void;
+  updateProjectInstallment: (id: string, installment: Partial<ProjectInstallment>) => void;
+  deleteProjectInstallment: (id: string) => void;
+  receiveInstallmentPayment: (installmentId: string, bankAccountId: string, paidDate?: string, amount?: number) => void;
+
+  addProjectMilestone: (milestone: Omit<ProjectMilestone, 'id' | 'createdAt'>) => void;
+  updateProjectMilestone: (id: string, milestone: Partial<ProjectMilestone>) => void;
+  deleteProjectMilestone: (id: string) => void;
+  toggleProjectMilestone: (id: string) => void;
 
   // Actions - Transactions
   addTransaction: (tx: Omit<Transaction, 'id'>) => void;
@@ -90,7 +118,7 @@ interface FinanceContextType {
   contributeToGoal: (goalId: string, amount: number, fromAccountId: string) => void;
   updateCategoryBudget: (category: string, monthlyBudget: number) => void;
 
-  // Computed Financial Metrics
+  // Computed Financial & Project Metrics
   totalNetWorth: number;
   totalBankBalance: number;
   totalPhysicalCash: number;
@@ -106,32 +134,68 @@ interface FinanceContextType {
   clientsByState: Record<string, { clientsCount: number; totalBilled: number; projectsCount: number; clients: Client[] }>;
   statesWithJobsCount: number;
 
-  // Backup / Reset / Export
+  // Deadlines & Installments Alerts
+  ongoingArchitectureProjects: ArchitectureProject[];
+  dueSoonInstallments: ProjectInstallment[];
+  overdueInstallments: ProjectInstallment[];
+  pendingInstallments: ProjectInstallment[];
+  totalPendingInstallmentsAmount: number;
+  totalPaidInstallmentsAmount: number;
+  dueSoonMilestones: ProjectMilestone[];
+  overdueMilestones: ProjectMilestone[];
+  pendingMilestones: ProjectMilestone[];
+
+  // Backup / Reset / Export / Demo
   exportDataJSON: () => void;
   exportTransactionsCSV: () => void;
   importDataJSON: (jsonString: string) => boolean;
+  loadDemoData: () => void;
   resetAllData: () => void;
 }
 
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
 
-const STORAGE_KEYS = {
-  TRANSACTIONS: 'financas_freela_transactions_v1',
-  ACCOUNTS: 'financas_freela_accounts_v1',
-  MORTGAGE: 'financas_freela_mortgage_v1',
-  DEBTS: 'financas_freela_debts_v1',
-  CLIENTS: 'financas_freela_clients_v1',
-  PROJECTS: 'financas_freela_projects_v1',
-  ARCHITECTURE_PROJECTS: 'laine_paula_arch_projects_v1',
-  GOALS: 'financas_freela_goals_v1',
-  BUDGETS: 'financas_freela_budgets_v1',
-  PROFILE: 'laine_paula_profile_v1',
-};
-
 export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuth();
+
+  // Prefix storage keys per user UID for full data isolation
+  const getStorageKey = (key: string) => {
+    return user?.uid ? `office_v2_${user.uid}_${key}` : `office_v2_guest_${key}`;
+  };
+
+  const isOwner = user?.email === 'lfquadrosdecorativos@gmail.com';
+
+  const getCleanProfile = (): ArchitectProfile => {
+    const rawName = user?.displayName || user?.email?.split('@')[0] || 'Meu Escritório';
+    const formattedName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+    return {
+      name: formattedName,
+      title: 'Consultoria, Projetos & Serviços',
+      photoUrl: user?.photoURL || '',
+      location: 'Brasil',
+      specialty: 'Atendimento e Gestão Profissional',
+      tagline: 'Organização, excelência e controle financeiro.',
+      description: 'Gestão completa de clientes, propostas, recebimentos e evolução de projetos.',
+      instagramHandle: '',
+      instagramUrl: '',
+      followersCount: '0 seguidores',
+      rating: 5.0,
+      niche: 'arquitetura',
+      themeColor: 'gold',
+    };
+  };
+
   const [architectProfile, setArchitectProfile] = useState<ArchitectProfile>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.PROFILE);
-    return saved ? { ...INITIAL_ARCHITECT_PROFILE, ...JSON.parse(saved) } : INITIAL_ARCHITECT_PROFILE;
+    const saved = localStorage.getItem(getStorageKey('profile'));
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    // If owner without saved profile, show demo profile; for any other user, start clean
+    return isOwner ? INITIAL_ARCHITECT_PROFILE : getCleanProfile();
   });
 
   const [selectedMonth, setSelectedMonth] = useState<string>(() => {
@@ -142,96 +206,148 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   });
 
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
-    return saved ? JSON.parse(saved) : INITIAL_TRANSACTIONS;
+    const saved = localStorage.getItem(getStorageKey('transactions'));
+    if (saved) {
+      try { return JSON.parse(saved); } catch {}
+    }
+    return isOwner ? INITIAL_TRANSACTIONS : [];
   });
 
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.ACCOUNTS);
-    return saved ? JSON.parse(saved) : INITIAL_BANK_ACCOUNTS;
+    const saved = localStorage.getItem(getStorageKey('accounts'));
+    if (saved) {
+      try { return JSON.parse(saved); } catch {}
+    }
+    return isOwner ? INITIAL_BANK_ACCOUNTS : EMPTY_BANK_ACCOUNTS;
   });
 
   const [houseMortgage, setHouseMortgage] = useState<HouseMortgage>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.MORTGAGE);
-    return saved ? JSON.parse(saved) : INITIAL_HOUSE_MORTGAGE;
+    const saved = localStorage.getItem(getStorageKey('mortgage'));
+    if (saved) {
+      try { return JSON.parse(saved); } catch {}
+    }
+    return isOwner ? INITIAL_HOUSE_MORTGAGE : EMPTY_HOUSE_MORTGAGE;
   });
 
   const [debts, setDebts] = useState<Debt[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.DEBTS);
-    return saved ? JSON.parse(saved) : INITIAL_DEBTS;
+    const saved = localStorage.getItem(getStorageKey('debts'));
+    if (saved) {
+      try { return JSON.parse(saved); } catch {}
+    }
+    return isOwner ? INITIAL_DEBTS : [];
   });
 
   const [clients, setClients] = useState<Client[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.CLIENTS);
-    return saved ? JSON.parse(saved) : INITIAL_CLIENTS;
+    const saved = localStorage.getItem(getStorageKey('clients'));
+    if (saved) {
+      try { return JSON.parse(saved); } catch {}
+    }
+    return isOwner ? INITIAL_CLIENTS : [];
   });
 
   const [freelanceProjects, setFreelanceProjects] = useState<FreelanceProject[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.PROJECTS);
-    return saved ? JSON.parse(saved) : INITIAL_FREELANCE_PROJECTS;
+    const saved = localStorage.getItem(getStorageKey('projects'));
+    if (saved) {
+      try { return JSON.parse(saved); } catch {}
+    }
+    return isOwner ? INITIAL_FREELANCE_PROJECTS : [];
   });
 
   const [architectureProjects, setArchitectureProjects] = useState<ArchitectureProject[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.ARCHITECTURE_PROJECTS);
-    return saved ? JSON.parse(saved) : INITIAL_ARCHITECTURE_PROJECTS;
+    const saved = localStorage.getItem(getStorageKey('architecture_projects'));
+    if (saved) {
+      try { return JSON.parse(saved); } catch {}
+    }
+    return isOwner ? INITIAL_ARCHITECTURE_PROJECTS : [];
+  });
+
+  const [projectInstallments, setProjectInstallments] = useState<ProjectInstallment[]>(() => {
+    const saved = localStorage.getItem(getStorageKey('installments'));
+    if (saved) {
+      try { return JSON.parse(saved); } catch {}
+    }
+    return isOwner ? INITIAL_PROJECT_INSTALLMENTS : [];
+  });
+
+  const [projectMilestones, setProjectMilestones] = useState<ProjectMilestone[]>(() => {
+    const saved = localStorage.getItem(getStorageKey('milestones'));
+    if (saved) {
+      try { return JSON.parse(saved); } catch {}
+    }
+    return isOwner ? INITIAL_PROJECT_MILESTONES : [];
   });
 
   const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.GOALS);
-    return saved ? JSON.parse(saved) : INITIAL_SAVINGS_GOALS;
+    const saved = localStorage.getItem(getStorageKey('goals'));
+    if (saved) {
+      try { return JSON.parse(saved); } catch {}
+    }
+    return isOwner ? INITIAL_SAVINGS_GOALS : [];
   });
 
   const [categoryBudgets, setCategoryBudgets] = useState<CategoryBudget[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.BUDGETS);
-    return saved ? JSON.parse(saved) : INITIAL_CATEGORY_BUDGETS;
+    const saved = localStorage.getItem(getStorageKey('budgets'));
+    if (saved) {
+      try { return JSON.parse(saved); } catch {}
+    }
+    return INITIAL_CATEGORY_BUDGETS;
   });
 
-  // Save to localStorage on change
+  // Apply CSS color theme whenever themeColor changes or component mounts
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(transactions));
-  }, [transactions]);
+    applyThemeToDocument(architectProfile.themeColor || 'gold');
+  }, [architectProfile.themeColor]);
+
+  // Sync to user-scoped localStorage
+  useEffect(() => {
+    localStorage.setItem(getStorageKey('transactions'), JSON.stringify(transactions));
+  }, [transactions, user?.uid]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.ACCOUNTS, JSON.stringify(bankAccounts));
-  }, [bankAccounts]);
+    localStorage.setItem(getStorageKey('accounts'), JSON.stringify(bankAccounts));
+  }, [bankAccounts, user?.uid]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.MORTGAGE, JSON.stringify(houseMortgage));
-  }, [houseMortgage]);
+    localStorage.setItem(getStorageKey('mortgage'), JSON.stringify(houseMortgage));
+  }, [houseMortgage, user?.uid]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.DEBTS, JSON.stringify(debts));
-  }, [debts]);
+    localStorage.setItem(getStorageKey('debts'), JSON.stringify(debts));
+  }, [debts, user?.uid]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.CLIENTS, JSON.stringify(clients));
-  }, [clients]);
+    localStorage.setItem(getStorageKey('clients'), JSON.stringify(clients));
+  }, [clients, user?.uid]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(freelanceProjects));
-  }, [freelanceProjects]);
+    localStorage.setItem(getStorageKey('projects'), JSON.stringify(freelanceProjects));
+  }, [freelanceProjects, user?.uid]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.ARCHITECTURE_PROJECTS, JSON.stringify(architectureProjects));
-  }, [architectureProjects]);
+    localStorage.setItem(getStorageKey('architecture_projects'), JSON.stringify(architectureProjects));
+  }, [architectureProjects, user?.uid]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(freelanceProjects));
-  }, [freelanceProjects]);
+    localStorage.setItem(getStorageKey('installments'), JSON.stringify(projectInstallments));
+  }, [projectInstallments, user?.uid]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.GOALS, JSON.stringify(savingsGoals));
-  }, [savingsGoals]);
+    localStorage.setItem(getStorageKey('milestones'), JSON.stringify(projectMilestones));
+  }, [projectMilestones, user?.uid]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.BUDGETS, JSON.stringify(categoryBudgets));
-  }, [categoryBudgets]);
+    localStorage.setItem(getStorageKey('goals'), JSON.stringify(savingsGoals));
+  }, [savingsGoals, user?.uid]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(architectProfile));
-  }, [architectProfile]);
+    localStorage.setItem(getStorageKey('budgets'), JSON.stringify(categoryBudgets));
+  }, [categoryBudgets, user?.uid]);
 
-  // Actions - Profile
+  useEffect(() => {
+    localStorage.setItem(getStorageKey('profile'), JSON.stringify(architectProfile));
+  }, [architectProfile, user?.uid]);
+
+  // Actions - Profile & Customization
   const updateArchitectProfile = (updatedFields: Partial<ArchitectProfile>) => {
     setArchitectProfile((prev) => ({
       ...prev,
@@ -243,6 +359,24 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setArchitectProfile((prev) => ({
       ...prev,
       photoUrl,
+    }));
+  };
+
+  const changeTheme = (theme: ThemeColorId) => {
+    applyThemeToDocument(theme);
+    setArchitectProfile((prev) => ({
+      ...prev,
+      themeColor: theme,
+    }));
+  };
+
+  const changeNiche = (niche: NicheType) => {
+    const nicheConf = NICHES[niche];
+    setArchitectProfile((prev) => ({
+      ...prev,
+      niche,
+      title: prev.title === 'Arquitetura e Interiores' || !prev.title ? (nicheConf?.defaultTitle || prev.title) : prev.title,
+      specialty: prev.specialty === 'Especialista em interiores residenciais' || !prev.specialty ? (nicheConf?.defaultSpecialty || prev.specialty) : prev.specialty,
     }));
   };
 
@@ -687,6 +821,30 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     );
   };
 
+  const updateProjectStatus = (id: string, newStatus: ArchitectureProject['status']) => {
+    setArchitectureProjects((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, status: newStatus } : p))
+    );
+  };
+
+  const addConstructionReport = (projectId: string, report: Omit<ConstructionReport, 'id'>) => {
+    const newReport: ConstructionReport = {
+      ...report,
+      id: `rep-${Date.now()}`,
+    };
+    setArchitectureProjects((prev) =>
+      prev.map((p) => {
+        if (p.id === projectId) {
+          return {
+            ...p,
+            reports: [newReport, ...(p.reports || [])],
+          };
+        }
+        return p;
+      })
+    );
+  };
+
   const receiveProjectPayment = (projectId: string, amount: number, bankAccountId: string) => {
     const project = freelanceProjects.find((p) => p.id === projectId);
     if (!project || amount <= 0) return;
@@ -791,6 +949,128 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     );
   };
 
+  // Actions - Project Installments & Cobranças
+  const addProjectInstallment = (installmentData: Omit<ProjectInstallment, 'id' | 'createdAt'>) => {
+    const newInst: ProjectInstallment = {
+      ...installmentData,
+      id: `inst-${Date.now()}`,
+      createdAt: new Date().toISOString().split('T')[0],
+    };
+    setProjectInstallments((prev) => [newInst, ...prev]);
+  };
+
+  const updateProjectInstallment = (id: string, updatedFields: Partial<ProjectInstallment>) => {
+    setProjectInstallments((prev) =>
+      prev.map((inst) => (inst.id === id ? { ...inst, ...updatedFields } : inst))
+    );
+  };
+
+  const deleteProjectInstallment = (id: string) => {
+    setProjectInstallments((prev) => prev.filter((inst) => inst.id !== id));
+  };
+
+  const receiveInstallmentPayment = (
+    installmentId: string,
+    bankAccountId: string,
+    paidDate?: string,
+    amount?: number
+  ) => {
+    const inst = projectInstallments.find((i) => i.id === installmentId);
+    if (!inst) return;
+
+    const actualDate = paidDate || new Date().toISOString().split('T')[0];
+    const actualAmount = amount !== undefined && amount > 0 ? amount : inst.amount;
+
+    // 1. Update installment
+    setProjectInstallments((prev) =>
+      prev.map((i) =>
+        i.id === installmentId
+          ? {
+              ...i,
+              status: 'paid',
+              paidDate: actualDate,
+              paidAmount: actualAmount,
+              bankAccountId,
+            }
+          : i
+      )
+    );
+
+    // 2. Update parent ArchitectureProject's paidAmount
+    setArchitectureProjects((prev) =>
+      prev.map((p) => {
+        if (p.id === inst.projectId || p.title === inst.projectTitle) {
+          const currentPaid = p.paidAmount || 0;
+          return {
+            ...p,
+            paidAmount: currentPaid + actualAmount,
+          };
+        }
+        return p;
+      })
+    );
+
+    // 3. Create income transaction in the selected bank account
+    const newTx: Transaction = {
+      id: `tx-inst-${Date.now()}`,
+      description: `Honorários: ${inst.projectTitle} - Parcela ${inst.installmentNumber}/${inst.totalInstallments} (${inst.description})`,
+      amount: actualAmount,
+      type: 'income',
+      incomeSource: 'freelancer',
+      bankAccountId,
+      date: actualDate,
+      status: 'completed',
+      paymentMethod: 'pix',
+      clientName: inst.clientName,
+      notes: `Recebimento da parcela ${inst.installmentNumber}/${inst.totalInstallments} referente ao projeto ${inst.projectTitle}.`,
+    };
+
+    setTransactions((prev) => [newTx, ...prev]);
+
+    // 4. Update bank account balance
+    setBankAccounts((prev) =>
+      prev.map((acc) =>
+        acc.id === bankAccountId ? { ...acc, balance: acc.balance + actualAmount } : acc
+      )
+    );
+  };
+
+  // Actions - Project Milestones & Prazos
+  const addProjectMilestone = (milestoneData: Omit<ProjectMilestone, 'id' | 'createdAt'>) => {
+    const newMs: ProjectMilestone = {
+      ...milestoneData,
+      id: `ms-${Date.now()}`,
+      createdAt: new Date().toISOString().split('T')[0],
+    };
+    setProjectMilestones((prev) => [newMs, ...prev]);
+  };
+
+  const updateProjectMilestone = (id: string, updatedFields: Partial<ProjectMilestone>) => {
+    setProjectMilestones((prev) =>
+      prev.map((ms) => (ms.id === id ? { ...ms, ...updatedFields } : ms))
+    );
+  };
+
+  const deleteProjectMilestone = (id: string) => {
+    setProjectMilestones((prev) => prev.filter((ms) => ms.id !== id));
+  };
+
+  const toggleProjectMilestone = (id: string) => {
+    setProjectMilestones((prev) =>
+      prev.map((ms) => {
+        if (ms.id === id) {
+          const isCompleted = !ms.completed;
+          return {
+            ...ms,
+            completed: isCompleted,
+            completedDate: isCompleted ? new Date().toISOString().split('T')[0] : undefined,
+          };
+        }
+        return ms;
+      })
+    );
+  };
+
   // Computations
   const totalBankBalance = useMemo(() => {
     return bankAccounts
@@ -881,6 +1161,73 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return Object.keys(clientsByState).length;
   }, [clientsByState]);
 
+  // Ongoing architecture projects
+  const ongoingArchitectureProjects = useMemo(() => {
+    return architectureProjects.filter((p) => p.status !== 'entregue');
+  }, [architectureProjects]);
+
+  // Today reference string
+  const todayStr = useMemo(() => {
+    return new Date().toISOString().split('T')[0];
+  }, []);
+
+  // Helper for difference in days
+  const getDaysDiff = (targetDateStr: string) => {
+    if (!targetDateStr) return 999;
+    const today = new Date(todayStr);
+    const target = new Date(targetDateStr);
+    const diffTime = target.getTime() - today.getTime();
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  };
+
+  // Installment alerts
+  const pendingInstallments = useMemo(() => {
+    return projectInstallments.filter((i) => i.status !== 'paid');
+  }, [projectInstallments]);
+
+  const totalPendingInstallmentsAmount = useMemo(() => {
+    return pendingInstallments.reduce((sum, i) => sum + (i.amount || 0), 0);
+  }, [pendingInstallments]);
+
+  const totalPaidInstallmentsAmount = useMemo(() => {
+    return projectInstallments
+      .filter((i) => i.status === 'paid')
+      .reduce((sum, i) => sum + (i.paidAmount || i.amount || 0), 0);
+  }, [projectInstallments]);
+
+  const overdueInstallments = useMemo(() => {
+    return projectInstallments.filter((i) => {
+      if (i.status === 'paid') return false;
+      if (i.status === 'overdue') return true;
+      return i.dueDate < todayStr;
+    });
+  }, [projectInstallments, todayStr]);
+
+  const dueSoonInstallments = useMemo(() => {
+    return projectInstallments.filter((i) => {
+      if (i.status === 'paid') return false;
+      const diff = getDaysDiff(i.dueDate);
+      return diff >= 0 && diff <= 7;
+    });
+  }, [projectInstallments, todayStr]);
+
+  // Milestone alerts
+  const pendingMilestones = useMemo(() => {
+    return projectMilestones.filter((m) => !m.completed);
+  }, [projectMilestones]);
+
+  const overdueMilestones = useMemo(() => {
+    return projectMilestones.filter((m) => !m.completed && m.dueDate < todayStr);
+  }, [projectMilestones, todayStr]);
+
+  const dueSoonMilestones = useMemo(() => {
+    return projectMilestones.filter((m) => {
+      if (m.completed) return false;
+      const diff = getDaysDiff(m.dueDate);
+      return diff >= 0 && diff <= 7;
+    });
+  }, [projectMilestones, todayStr]);
+
   // Export / Import / Reset
   const exportDataJSON = () => {
     const exportObject = {
@@ -890,14 +1237,18 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       debts,
       clients,
       freelanceProjects,
+      architectureProjects,
+      projectInstallments,
+      projectMilestones,
       savingsGoals,
       categoryBudgets,
+      architectProfile,
       exportedAt: new Date().toISOString(),
     };
     const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(exportObject, null, 2));
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute('href', dataStr);
-    downloadAnchor.setAttribute('download', `financas_freela_backup_${new Date().toISOString().split('T')[0]}.json`);
+    downloadAnchor.setAttribute('download', `laine_paula_backup_${new Date().toISOString().split('T')[0]}.json`);
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
@@ -917,7 +1268,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       t.clientName ? `"${t.clientName.replace(/"/g, '""')}"` : '',
     ]);
 
-    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(';'), ...rows.map((e) => e.join(';'))].join('\n');
+    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(';'), ...rows.map((e) => e.join(''))].join('\n');
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
@@ -937,6 +1288,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (data.clients) setClients(data.clients);
       if (data.freelanceProjects) setFreelanceProjects(data.freelanceProjects);
       if (data.architectureProjects) setArchitectureProjects(data.architectureProjects);
+      if (data.projectInstallments) setProjectInstallments(data.projectInstallments);
+      if (data.projectMilestones) setProjectMilestones(data.projectMilestones);
       if (data.savingsGoals) setSavingsGoals(data.savingsGoals);
       if (data.categoryBudgets) setCategoryBudgets(data.categoryBudgets);
       if (data.architectProfile) setArchitectProfile(data.architectProfile);
@@ -946,7 +1299,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  const resetAllData = () => {
+  const loadDemoData = () => {
     setTransactions(INITIAL_TRANSACTIONS);
     setBankAccounts(INITIAL_BANK_ACCOUNTS);
     setHouseMortgage(INITIAL_HOUSE_MORTGAGE);
@@ -954,9 +1307,27 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setClients(INITIAL_CLIENTS);
     setFreelanceProjects(INITIAL_FREELANCE_PROJECTS);
     setArchitectureProjects(INITIAL_ARCHITECTURE_PROJECTS);
+    setProjectInstallments(INITIAL_PROJECT_INSTALLMENTS);
+    setProjectMilestones(INITIAL_PROJECT_MILESTONES);
     setSavingsGoals(INITIAL_SAVINGS_GOALS);
     setCategoryBudgets(INITIAL_CATEGORY_BUDGETS);
     setArchitectProfile(INITIAL_ARCHITECT_PROFILE);
+    applyThemeToDocument(INITIAL_ARCHITECT_PROFILE.themeColor || 'gold');
+  };
+
+  const resetAllData = () => {
+    setTransactions([]);
+    setBankAccounts(EMPTY_BANK_ACCOUNTS);
+    setHouseMortgage(EMPTY_HOUSE_MORTGAGE);
+    setDebts([]);
+    setClients([]);
+    setFreelanceProjects([]);
+    setArchitectureProjects([]);
+    setProjectInstallments([]);
+    setProjectMilestones([]);
+    setSavingsGoals([]);
+    setCategoryBudgets(INITIAL_CATEGORY_BUDGETS);
+    setArchitectProfile(getCleanProfile());
   };
 
   return (
@@ -965,6 +1336,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         architectProfile,
         updateArchitectProfile,
         updateProfilePhoto,
+        changeTheme,
+        changeNiche,
         transactions,
         bankAccounts,
         houseMortgage,
@@ -972,6 +1345,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         clients,
         freelanceProjects,
         architectureProjects,
+        projectInstallments,
+        projectMilestones,
         savingsGoals,
         categoryBudgets,
         selectedMonth,
@@ -981,6 +1356,16 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         deleteArchitectureProject,
         addPhotoToProject,
         removePhotoFromProject,
+        updateProjectStatus,
+        addConstructionReport,
+        addProjectInstallment,
+        updateProjectInstallment,
+        deleteProjectInstallment,
+        receiveInstallmentPayment,
+        addProjectMilestone,
+        updateProjectMilestone,
+        deleteProjectMilestone,
+        toggleProjectMilestone,
         addTransaction,
         updateTransaction,
         deleteTransaction,
@@ -1022,9 +1407,19 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         monthlyBalance,
         clientsByState,
         statesWithJobsCount,
+        ongoingArchitectureProjects,
+        dueSoonInstallments,
+        overdueInstallments,
+        pendingInstallments,
+        totalPendingInstallmentsAmount,
+        totalPaidInstallmentsAmount,
+        dueSoonMilestones,
+        overdueMilestones,
+        pendingMilestones,
         exportDataJSON,
         exportTransactionsCSV,
         importDataJSON,
+        loadDemoData,
         resetAllData,
       }}
     >
